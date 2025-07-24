@@ -9,6 +9,7 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../chat/presentation/chat_page.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/helpers.dart';
 
 extension PropertyModelExtension on PropertyModel {
   static PropertyModel fromProperty(Property p) => PropertyModel(
@@ -482,6 +483,17 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    Map<String, double> exchangeRates = {'USD': 1.0};
+    String selectedCurrency = 'USD';
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      if (args['exchangeRates'] is Map<String, double>) {
+        exchangeRates = args['exchangeRates'] as Map<String, double>;
+      }
+      if (args['selectedCurrency'] is String) {
+        selectedCurrency = args['selectedCurrency'] as String;
+      }
+    }
     final PropertyModel property =
         _property ??
         PropertyModel(
@@ -536,7 +548,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildPropertyHeader(),
+                                _buildPropertyHeader(
+                                  property,
+                                  exchangeRates,
+                                  selectedCurrency,
+                                ),
                                 _buildPropertyFeatures(),
                                 _buildDescription(),
                                 _buildAmenities(),
@@ -678,11 +694,14 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     );
   }
 
-  Widget _buildPropertyHeader() {
-    final property = _property;
+  Widget _buildPropertyHeader(
+    PropertyModel property,
+    Map<String, double> exchangeRates,
+    String selectedCurrency,
+  ) {
     final userProfile = UserProfile.currentUserProfile;
     final isOwner =
-        userProfile != null && (property?.ownerId == userProfile['uid']);
+        userProfile != null && (property.ownerId == userProfile['uid']);
     final isRealtorOrOwner =
         userProfile != null &&
         (userProfile['role'] == 'realtor' ||
@@ -718,7 +737,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      property?.status == 'for_sale' ? 'For Sale' : 'For Rent',
+                      property.status == 'for_sale' ? 'For Sale' : 'For Rent',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -760,7 +779,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           const SizedBox(height: 12),
           // Title
           Text(
-            property?.title ?? '',
+            property.title,
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -775,7 +794,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  '${property?.address}, ${property?.city}, ${property?.state}',
+                  '${property.address}, ${property.city}, ${property.state}',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
@@ -787,7 +806,10 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           const SizedBox(height: 16),
           // Price
           Text(
-            '\$${_formatPrice(property?.price ?? 0)}',
+            Helpers.formatPrice(
+              (property.price) * (exchangeRates[selectedCurrency] ?? 1.0),
+              currency: selectedCurrency,
+            ),
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,

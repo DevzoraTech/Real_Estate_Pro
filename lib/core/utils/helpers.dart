@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+// Update formatPrice to accept a currency argument and use the correct symbol.
+const supportedCurrencies = [
+  {'code': 'USD', 'symbol': '\$'},
+  {'code': 'UGX', 'symbol': 'USh'},
+  {'code': 'EUR', 'symbol': '€'},
+];
+
 class Helpers {
-  static String formatPrice(double price) {
-    final formatter = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
-    return formatter.format(price);
+  static String formatPrice(double price, {String currency = 'USD'}) {
+    final symbol =
+        supportedCurrencies.firstWhere(
+          (c) => c['code'] == currency,
+          orElse: () => supportedCurrencies[0],
+        )['symbol'];
+    if (currency == 'UGX') {
+      return '$symbol${price.toStringAsFixed(0)}';
+    }
+    return '$symbol${price.toStringAsFixed(2)}';
   }
 
   static String formatArea(double area) {
