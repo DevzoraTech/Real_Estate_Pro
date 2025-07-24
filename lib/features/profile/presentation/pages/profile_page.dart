@@ -17,29 +17,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage>
     with SingleTickerProviderStateMixin {
-  final List<Map<String, dynamic>> _userProperties = [
-    {
-      'id': '1',
-      'title': 'Modern Downtown Apartment',
-      'address': 'San Francisco, CA',
-      'image':
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-      'price': 450000,
-      'status': 'For Sale',
-      'views': 245,
-    },
-    {
-      'id': '2',
-      'title': 'Cozy Family House',
-      'address': 'San Francisco, CA',
-      'image':
-          'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400',
-      'price': 3500,
-      'status': 'For Rent',
-      'views': 128,
-    },
-  ];
-
   late TabController _tabController;
 
   @override
@@ -493,32 +470,49 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Widget _buildPropertiesTab() {
-    return _userProperties.isEmpty
-        ? const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.home_work, size: 64, color: AppColors.textSecondary),
-              SizedBox(height: 16),
-              Text(
-                'No properties yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Add your first property to get started',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-              SizedBox(height: 24),
-            ],
-          ),
-        )
-        : ListView.builder(
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Not logged in.'));
+    }
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('properties')
+              .where('ownerId', isEqualTo: user.uid)
+              .orderBy('createdAt', descending: true)
+              .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final docs = snapshot.data?.docs ?? [];
+        print('Profile properties found: ${docs.length} for user: ${user.uid}');
+        if (docs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.home_work, size: 64, color: AppColors.textSecondary),
+                SizedBox(height: 16),
+                Text(
+                  'No properties yet',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Add your first property to get started',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+                SizedBox(height: 24),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount:
-              _userProperties.length + 1, // +1 for the Add Property button
+          itemCount: docs.length + 1, // +1 for the Add Property button
           itemBuilder: (context, index) {
-            if (index == _userProperties.length) {
+            if (index == docs.length) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: ElevatedButton.icon(
@@ -538,7 +532,7 @@ class _ProfilePageState extends State<ProfilePage>
                 ),
               );
             }
-            final property = _userProperties[index];
+            final data = docs[index].data() as Map<String, dynamic>;
             return Card(
               margin: const EdgeInsets.only(bottom: 16),
               shape: RoundedRectangleBorder(
@@ -557,11 +551,28 @@ class _ProfilePageState extends State<ProfilePage>
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(12),
                           ),
-                          image: DecorationImage(
-                            image: NetworkImage(property['image']),
-                            fit: BoxFit.cover,
-                          ),
+                          image:
+                              data['images'] is List &&
+                                      (data['images'] as List).isNotEmpty
+                                  ? DecorationImage(
+                                    image: NetworkImage(
+                                      (data['images'] as List).first,
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                  : null,
+                          color: Colors.grey[200],
                         ),
+                        child:
+                            (data['images'] is List &&
+                                    (data['images'] as List).isEmpty)
+                                ? const Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    size: 40,
+                                  ),
+                                )
+                                : null,
                       ),
                       Positioned(
                         top: 12,
@@ -573,13 +584,13 @@ class _ProfilePageState extends State<ProfilePage>
                           ),
                           decoration: BoxDecoration(
                             color:
-                                property['status'] == 'For Sale'
+                                data['status'] == 'For Sale'
                                     ? AppColors.forSale
                                     : AppColors.forRent,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            property['status'],
+                            data['status'] ?? '',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -597,7 +608,7 @@ class _ProfilePageState extends State<ProfilePage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          property['title'],
+                          data['title'] ?? '',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -613,7 +624,7 @@ class _ProfilePageState extends State<ProfilePage>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              property['address'],
+                              data['address'] ?? '',
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 14,
@@ -626,9 +637,9 @@ class _ProfilePageState extends State<ProfilePage>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              property['status'] == 'For Sale'
-                                  ? '\$${property['price']}'
-                                  : '\$${property['price']}/month',
+                              data['status'] == 'For Sale'
+                                  ? 'UGX ${data['price'] ?? 0}'
+                                  : 'UGX ${data['price'] ?? 0}/month',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -644,7 +655,7 @@ class _ProfilePageState extends State<ProfilePage>
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${property['views']} views',
+                                  '${data['views'] ?? 0} views',
                                   style: const TextStyle(
                                     color: AppColors.textSecondary,
                                     fontSize: 12,
@@ -680,7 +691,7 @@ class _ProfilePageState extends State<ProfilePage>
                                   Navigator.pushNamed(
                                     context,
                                     AppRoutes.propertyDetail,
-                                    arguments: property['id'],
+                                    arguments: docs[index].id,
                                   );
                                 },
                                 icon: const Icon(Icons.visibility),
@@ -701,6 +712,8 @@ class _ProfilePageState extends State<ProfilePage>
             );
           },
         );
+      },
+    );
   }
 
   @override
