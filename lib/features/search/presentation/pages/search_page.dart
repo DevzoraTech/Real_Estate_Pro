@@ -2,9 +2,34 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/property_model.dart';
-import '../../../../core/utils/helpers.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/pages/login_page.dart';
+
+class MapGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = Colors.grey.withOpacity(0.1)
+          ..strokeWidth = 1;
+
+    const gridSize = 50.0;
+
+    // Draw vertical lines
+    for (double x = 0; x < size.width; x += gridSize) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // Draw horizontal lines
+    for (double y = 0; y < size.height; y += gridSize) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -70,53 +95,128 @@ class _SearchPageState extends State<SearchPage>
 
   Widget _buildSearchHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.primary.withOpacity(0.02), Colors.white],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Enhanced header with modern styling
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  // Handle back navigation
-                },
-              ),
-              const Expanded(
-                child: Text(
-                  'Search Properties',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.tune),
-                onPressed: () {
-                  _showFilterBottomSheet();
-                },
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Find Your Dream',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      'Property',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: Stack(
+                    children: [
+                      const Icon(Icons.tune_rounded, size: 20),
+                      if (_hasActiveFilters())
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  onPressed: () {
+                    _showFilterBottomSheet();
+                  },
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+
+          // Enhanced search bar with modern design
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'France, Nice',
-                prefixIcon: const Icon(
-                  Icons.search,
-                  color: AppColors.textSecondary,
+                hintText: 'Search location, city, or property...',
+                hintStyle: TextStyle(color: Colors.grey[500], fontSize: 15),
+                prefixIcon: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
                 ),
                 suffixIcon:
                     _searchController.text.isNotEmpty
@@ -127,19 +227,36 @@ class _SearchPageState extends State<SearchPage>
                             });
                           },
                           child: Container(
-                            margin: const EdgeInsets.all(8),
+                            margin: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.grey[200],
+                              color: Colors.grey[100],
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.close, size: 18),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: Colors.grey[600],
+                            ),
                           ),
                         )
-                        : null,
+                        : Container(
+                          margin: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.my_location_rounded,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                        ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+                  horizontal: 20,
+                  vertical: 16,
                 ),
               ),
               onChanged: (value) {
@@ -152,6 +269,15 @@ class _SearchPageState extends State<SearchPage>
         ],
       ),
     );
+  }
+
+  bool _hasActiveFilters() {
+    return _selectedType != 'All' ||
+        _selectedStatus != 'All' ||
+        _minBedrooms > 0 ||
+        _minBathrooms > 0 ||
+        _priceRange.start > 0 ||
+        _priceRange.end < 1000000;
   }
 
   Widget _buildActiveFilterChips() {
@@ -254,74 +380,110 @@ class _SearchPageState extends State<SearchPage>
   Widget _buildListView() {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _selectedType = 'All';
-                  _selectedStatus = 'All';
-                  _minBedrooms = 0;
-                  _minBathrooms = 0;
-                  _priceRange = const RangeValues(0, 15000);
-                });
-              },
-              icon: const Icon(Icons.clear),
-              label: const Text('Clear Filters'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 10,
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+        // Enhanced Results Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
+          ),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _buildPropertyQuery().snapshots(),
+            builder: (context, snapshot) {
+              final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$count Properties Found',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (_hasActiveFilters())
+                        Text(
+                          'Filtered results',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      // Sort Button
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.sort_rounded, size: 20),
+                          onPressed: _showSortOptions,
+                          tooltip: 'Sort',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Clear Filters Button
+                      if (_hasActiveFilters())
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _selectedType = 'All';
+                              _selectedStatus = 'All';
+                              _minBedrooms = 0;
+                              _minBathrooms = 0;
+                              _priceRange = const RangeValues(0, 15000);
+                            });
+                          },
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          label: const Text('Clear'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
+
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: _buildPropertyQuery().snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return _buildLoadingState();
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No properties found',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Try adjusting your filters or search another location.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 16,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                );
+                return _buildEmptyState();
               }
               final docs = snapshot.data!.docs;
               final properties =
@@ -333,15 +495,25 @@ class _SearchPageState extends State<SearchPage>
                         ),
                       )
                       .toList();
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                itemCount: properties.length,
-                separatorBuilder:
-                    (context, index) => const SizedBox(height: 16),
-                itemBuilder: (context, index) {
-                  final property = properties[index];
-                  return _buildPropertyCard(property);
+
+              return RefreshIndicator(
+                onRefresh: () async {
+                  // Refresh data
+                  await Future.delayed(const Duration(milliseconds: 500));
                 },
+                color: AppColors.primary,
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 24),
+                  itemCount: properties.length,
+                  itemBuilder: (context, index) {
+                    final property = properties[index];
+                    return AnimatedContainer(
+                      duration: Duration(milliseconds: 300 + (index * 50)),
+                      curve: Curves.easeOutBack,
+                      child: _buildPropertyCard(property),
+                    );
+                  },
+                ),
               );
             },
           ),
@@ -350,119 +522,614 @@ class _SearchPageState extends State<SearchPage>
     );
   }
 
-  Widget _buildPropertyCard(PropertyModel property) {
-    return InkWell(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/propertyDetail', // Or use AppRoutes.propertyDetail if available
-          arguments: property.id,
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(50),
+            ),
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Searching Properties...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Finding the best matches for you',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(60),
+              ),
+              child: Icon(
+                Icons.search_off_rounded,
+                size: 64,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No Properties Found',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'We couldn\'t find any properties matching your criteria.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            Column(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _selectedType = 'All';
+                      _selectedStatus = 'All';
+                      _minBedrooms = 0;
+                      _minBathrooms = 0;
+                      _priceRange = const RangeValues(0, 15000);
+                      _searchController.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Clear All Filters'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () {
+                    _showFilterBottomSheet();
+                  },
+                  icon: const Icon(Icons.tune_rounded),
+                  label: const Text('Adjust Filters'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Sort Properties',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              _buildSortOption('Price: Low to High', Icons.arrow_upward),
+              _buildSortOption('Price: High to Low', Icons.arrow_downward),
+              _buildSortOption('Newest First', Icons.access_time),
+              _buildSortOption('Most Popular', Icons.trending_up),
+              _buildSortOption('Bedrooms', Icons.bed),
+              _buildSortOption('Area Size', Icons.square_foot),
+            ],
+          ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
-      child: Card(
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 4,
-        shadowColor: AppColors.primary.withOpacity(0.08),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Property Image
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+    );
+  }
+
+  Widget _buildSortOption(String title, IconData icon) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 20),
+      ),
+      title: Text(title),
+      onTap: () {
+        Navigator.pop(context);
+        // Handle sort logic here
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sorted by $title'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPropertyCard(PropertyModel property) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Hero(
+        tag: 'property_${property.id}',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/propertyDetail',
+                arguments: property.id,
+              );
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                    spreadRadius: 0,
                   ),
-                  child:
-                      (property.images.isNotEmpty &&
-                              property.images[0].toString().trim().isNotEmpty)
-                          ? Image.network(
-                            property.images[0],
-                            height: 170,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                'assets/images/house.png',
-                                height: 170,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              );
-                            },
-                          )
-                          : Image.asset(
-                            'assets/images/house.png',
-                            height: 170,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                ),
-                Positioned(
-                  top: 14,
-                  right: 14,
-                  child: Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Enhanced Image Section
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
                         ),
-                      ],
-                    ),
-                    child: buildFavoriteIcon(property.id),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.7),
-                        ],
+                        child: Container(
+                          height: 220,
+                          width: double.infinity,
+                          child:
+                              (property.images.isNotEmpty &&
+                                      property.images[0]
+                                          .toString()
+                                          .trim()
+                                          .isNotEmpty)
+                                  ? Image.network(
+                                    property.images[0],
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (
+                                      context,
+                                      child,
+                                      loadingProgress,
+                                    ) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        color: Colors.grey[100],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value:
+                                                loadingProgress
+                                                            .expectedTotalBytes !=
+                                                        null
+                                                    ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                    : null,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[100],
+                                        child: Image.asset(
+                                          'assets/images/house.png',
+                                          fit: BoxFit.cover,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                  : Container(
+                                    color: Colors.grey[100],
+                                    child: Image.asset(
+                                      'assets/images/house.png',
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '€${(property.price / 30).round()}/night',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+
+                      // Property Status Badge
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(property.status),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            property.status.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
-                        // If you have real rating data, show it here. Otherwise, remove or show '-'.
+                      ),
+
+                      // Image Count Indicator
+                      if (property.images.length > 1)
+                        Positioned(
+                          top: 16,
+                          right: 60,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.photo_library_outlined,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${property.images.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Enhanced Favorite Button
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(25),
+                              onTap: () => _toggleFavorite(property.id),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                child: buildFavoriteIcon(property.id),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Price Overlay with Enhanced Design
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.8),
+                              ],
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '€${(property.price / 30).round()}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 24,
+                                    ),
+                                  ),
+                                  Text(
+                                    'per night',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: Colors.amber,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '4.${(property.id.hashCode % 10)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Enhanced Property Details Section
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Property Title and Type
                         Row(
                           children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 18,
+                            Expanded(
+                              child: Text(
+                                property.title,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '-',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                property.type,
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Location with Enhanced Icon
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.location_on_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                property.fullAddress,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Enhanced Property Features
+                        Row(
+                          children: [
+                            _buildEnhancedFeature(
+                              Icons.bed_rounded,
+                              '${property.bedrooms}',
+                              'Bedrooms',
+                            ),
+                            const SizedBox(width: 20),
+                            _buildEnhancedFeature(
+                              Icons.bathtub_rounded,
+                              '${property.bathrooms}',
+                              'Bathrooms',
+                            ),
+                            const SizedBox(width: 20),
+                            _buildEnhancedFeature(
+                              Icons.square_foot_rounded,
+                              '${property.area.toInt()}',
+                              'm²',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Property Description Preview
+                        if (property.description.isNotEmpty)
+                          Text(
+                            property.description,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        const SizedBox(height: 16),
+
+                        // Action Buttons Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  // Handle contact action
+                                  _showContactOptions(property);
+                                },
+                                icon: const Icon(Icons.phone_rounded, size: 18),
+                                label: const Text('Contact'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  side: BorderSide(color: AppColors.primary),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/propertyDetail',
+                                    arguments: property.id,
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.visibility_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text('View Details'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
                               ),
                             ),
                           ],
@@ -470,59 +1137,41 @@ class _SearchPageState extends State<SearchPage>
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    property.title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 15,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          property.fullAddress,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _buildFeature(Icons.bed, '${property.bedrooms}'),
-                      const SizedBox(width: 18),
-                      _buildFeature(Icons.bathtub, '${property.bathrooms}'),
-                      const SizedBox(width: 18),
-                      _buildFeature(
-                        Icons.square_foot,
-                        '${property.area.toInt()} m²',
-                      ),
-                    ],
-                  ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnhancedFeature(IconData icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: AppColors.primary),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -531,16 +1180,135 @@ class _SearchPageState extends State<SearchPage>
     );
   }
 
-  Widget _buildFeature(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.textSecondary),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'for rent':
+        return Colors.green;
+      case 'for sale':
+        return Colors.blue;
+      case 'sold':
+        return Colors.red;
+      case 'rented':
+        return Colors.orange;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  void _toggleFavorite(String propertyId) async {
+    final user = UserProfile.currentUserProfile;
+    final userId = user?['uid'];
+    if (userId == null) {
+      // Show login prompt
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+      return;
+    }
+
+    final favDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .doc(propertyId);
+
+    final docSnapshot = await favDoc.get();
+    if (docSnapshot.exists) {
+      await favDoc.delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Removed from favorites'),
+          backgroundColor: Colors.orange,
         ),
-      ],
+      );
+    } else {
+      await favDoc.set({
+        'propertyId': propertyId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Added to favorites'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _showContactOptions(PropertyModel property) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Contact Options',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.phone, color: Colors.green),
+                ),
+                title: const Text('Call Agent'),
+                subtitle: const Text('Direct phone call'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Handle phone call
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.message, color: Colors.blue),
+                ),
+                title: const Text('Send Message'),
+                subtitle: const Text('Chat with agent'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Handle messaging
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.email, color: Colors.orange),
+                ),
+                title: const Text('Send Email'),
+                subtitle: const Text('Email inquiry'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Handle email
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -549,27 +1317,10 @@ class _SearchPageState extends State<SearchPage>
       stream: _buildPropertyQuery().snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return _buildMapLoadingState();
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.map, size: 80, color: AppColors.primary),
-                const SizedBox(height: 16),
-                const Text(
-                  'Map View',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'No properties to display on the map.',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          );
+          return _buildMapEmptyState();
         }
         final docs = snapshot.data!.docs;
         final properties =
@@ -581,142 +1332,589 @@ class _SearchPageState extends State<SearchPage>
                   ),
                 )
                 .toList();
-        // For demo, show the first property in the card at the bottom
-        final property = properties.first;
+
         return Stack(
           children: [
-            // Map Placeholder
+            // Enhanced Map Background
             Container(
-              color: Colors.grey[200],
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.map, size: 80, color: AppColors.primary),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Map View',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.blue[50]!, Colors.green[50]!],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  // Map Grid Pattern
+                  CustomPaint(size: Size.infinite, painter: MapGridPainter()),
+                  // Map Content
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(50),
+                                ),
+                                child: Icon(
+                                  Icons.map_rounded,
+                                  size: 48,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Interactive Map View',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Showing ${properties.length} properties in your area',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      // Handle current location
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: const Text(
+                                            'Getting your location...',
+                                          ),
+                                          backgroundColor: AppColors.primary,
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.my_location_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('My Location'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      // Handle map settings
+                                      _showMapSettings();
+                                    },
+                                    icon: const Icon(
+                                      Icons.settings_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Settings'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      side: BorderSide(
+                                        color: AppColors.primary,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Interactive map would be displayed here',
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.location_on),
-                      label: const Text('Use Current Location'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
+                  ),
+                  // Property Markers Simulation
+                  ...properties
+                      .take(5)
+                      .map((property) => _buildPropertyMarker(property))
+                      .toList(),
+                ],
+              ),
+            ),
+
+            // Enhanced Property Card Carousel at Bottom
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 140,
+                child: PageView.builder(
+                  controller: PageController(viewportFraction: 0.85),
+                  itemCount: properties.length,
+                  itemBuilder: (context, index) {
+                    final property = properties[index];
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      child: _buildMapPropertyCard(property),
+                    );
+                  },
                 ),
               ),
             ),
-            // Property Card at Bottom (real data)
+
+            // Map Controls
             Positioned(
-              bottom: 20,
-              left: 20,
+              top: 20,
               right: 20,
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
+              child: Column(
+                children: [
+                  _buildMapControlButton(Icons.add, () {}),
+                  const SizedBox(height: 8),
+                  _buildMapControlButton(Icons.remove, () {}),
+                  const SizedBox(height: 8),
+                  _buildMapControlButton(Icons.layers_rounded, () {}),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMapLoadingState() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blue[50]!, Colors.green[50]!],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  CircularProgressIndicator(color: AppColors.primary),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Loading Map...',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          bottomLeft: Radius.circular(12),
-                        ),
-                        image: DecorationImage(
-                          image:
-                              (property.images.isNotEmpty &&
-                                      property.images[0]
-                                          .toString()
-                                          .trim()
-                                          .isNotEmpty)
-                                  ? NetworkImage(property.images[0])
-                                  : const AssetImage('assets/images/house.png')
-                                      as ImageProvider,
-                          fit: BoxFit.cover,
-                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Preparing property locations',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapEmptyState() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.blue[50]!, Colors.green[50]!],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.location_off_rounded,
+                    size: 64,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Properties on Map',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No properties match your current filters.',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _selectedType = 'All';
+                        _selectedStatus = 'All';
+                        _minBedrooms = 0;
+                        _minBathrooms = 0;
+                        _priceRange = const RangeValues(0, 15000);
+                      });
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Reset Filters'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyMarker(PropertyModel property) {
+    final random = property.id.hashCode;
+    final left = (random % 200).toDouble() + 50;
+    final top = (random % 300).toDouble() + 100;
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/propertyDetail',
+            arguments: property.id,
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            '€${(property.price / 30).round()}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapPropertyCard(PropertyModel property) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            '/propertyDetail',
+            arguments: property.id,
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+              ),
+              child: Container(
+                width: 120,
+                height: 140,
+                child:
+                    (property.images.isNotEmpty &&
+                            property.images[0].toString().trim().isNotEmpty)
+                        ? Image.network(
+                          property.images[0],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/images/house.png',
+                              fit: BoxFit.cover,
+                            );
+                          },
+                        )
+                        : Image.asset(
+                          'assets/images/house.png',
+                          fit: BoxFit.cover,
+                        ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      property.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            property.fullAddress,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '€${(property.price / 30).round()}/night',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        Row(
                           children: [
-                            Text(
-                              property.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 14,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on,
-                                  size: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    property.fullAddress,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
+                            const SizedBox(width: 2),
                             Text(
-                              '€${(property.price / 30).round()}/night',
+                              '4.${property.id.hashCode % 10}',
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapControlButton(IconData icon, VoidCallback onPressed) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: AppColors.primary),
+        onPressed: onPressed,
+        iconSize: 20,
+      ),
+    );
+  }
+
+  void _showMapSettings() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Map Settings',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.map, color: Colors.blue),
+                ),
+                title: const Text('Satellite View'),
+                trailing: Switch(
+                  value: false,
+                  onChanged: (value) {},
+                  activeColor: AppColors.primary,
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.traffic, color: Colors.green),
+                ),
+                title: const Text('Traffic Layer'),
+                trailing: Switch(
+                  value: true,
+                  onChanged: (value) {},
+                  activeColor: AppColors.primary,
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.location_city, color: Colors.orange),
+                ),
+                title: const Text('Show Nearby'),
+                subtitle: const Text('Schools, hospitals, etc.'),
+                trailing: Switch(
+                  value: false,
+                  onChanged: (value) {},
+                  activeColor: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -730,7 +1928,7 @@ class _SearchPageState extends State<SearchPage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -850,9 +2048,8 @@ class _SearchPageState extends State<SearchPage>
                                       setState(() {});
                                     },
                                     backgroundColor: Colors.white,
-                                    selectedColor: AppColors.primary.withValues(
-                                      alpha: 0.1,
-                                    ),
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.1),
                                     labelStyle: TextStyle(
                                       color:
                                           isSelected
@@ -930,9 +2127,8 @@ class _SearchPageState extends State<SearchPage>
                                       setState(() {});
                                     },
                                     backgroundColor: Colors.white,
-                                    selectedColor: AppColors.primary.withValues(
-                                      alpha: 0.1,
-                                    ),
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.1),
                                     labelStyle: TextStyle(
                                       color:
                                           _minBedrooms == index + 1
@@ -973,9 +2169,8 @@ class _SearchPageState extends State<SearchPage>
                                       setState(() {});
                                     },
                                     backgroundColor: Colors.white,
-                                    selectedColor: AppColors.primary.withValues(
-                                      alpha: 0.1,
-                                    ),
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.1),
                                     labelStyle: TextStyle(
                                       color:
                                           _minBathrooms == index + 1
@@ -1063,7 +2258,7 @@ class _SearchPageState extends State<SearchPage>
         // Handle amenity selection
       },
       backgroundColor: Colors.white,
-      selectedColor: AppColors.primary.withValues(alpha: 0.1),
+      selectedColor: AppColors.primary.withOpacity(0.1),
       labelStyle: TextStyle(
         color: isSelected ? AppColors.primary : AppColors.textSecondary,
       ),
