@@ -2089,225 +2089,248 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             )
           else
             Column(
-              children: visibleReviews.map((review) {
-                final isExpanded = _expandedReviews[review['reviewId']] ?? false;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Enhanced review header
-                      Row(
-                        children: [
-                          // Modern avatar
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppColors.primary.withOpacity(0.3),
-                                  AppColors.primary.withOpacity(0.1),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
-                              Icons.person_rounded,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Enhanced user info
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  review['reviewerName'] ?? 'Anonymous User',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (review['timestamp'] != null)
-                                  Text(
-                                    _formatReviewDate(review['timestamp']),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          // Enhanced rating display
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.star_rounded,
-                                  color: Colors.amber,
-                                  size: 14,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  (review['rating'] as double).toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+              children:
+                  visibleReviews.map((review) {
+                    final isExpanded =
+                        _expandedReviews[review['reviewId']] ?? false;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey[200]!),
                       ),
-                      const SizedBox(height: 12),
-                      
-                      // Enhanced comment section
-                      if ((review['comment'] as String).isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[200]!),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Enhanced review header
+                          Row(
                             children: [
-                              Text(
-                                review['comment'],
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                  height: 1.4,
-                                ),
-                                maxLines: isExpanded ? null : 3,
-                                overflow: isExpanded ? null : TextOverflow.ellipsis,
-                              ),
-                              if ((review['comment'] as String).length > 100)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _expandedReviews[review['reviewId']] = !isExpanded;
-                                      });
-                                    },
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          isExpanded ? 'Show less' : 'Read more',
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          isExpanded 
-                                            ? Icons.keyboard_arrow_up_rounded
-                                            : Icons.keyboard_arrow_down_rounded,
-                                          color: AppColors.primary,
-                                          size: 16,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      
-                      // Contact info (if expanded)
-                      if (isExpanded) ...[
-                        const SizedBox(height: 8),
-                        if ((review['reviewerEmail'] as String?)?.isNotEmpty == true ||
-                            (review['reviewerPhone'] as String?)?.isNotEmpty == true)
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              children: [
-                                if ((review['reviewerEmail'] as String?)?.isNotEmpty == true)
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.email_rounded,
-                                        size: 14,
-                                        color: AppColors.primary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          review['reviewerEmail'],
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ),
+                              // Modern avatar
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary.withOpacity(0.3),
+                                      AppColors.primary.withOpacity(0.1),
                                     ],
                                   ),
-                                if ((review['reviewerPhone'] as String?)?.isNotEmpty == true)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.phone_rounded,
-                                          size: 14,
-                                          color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Icon(
+                                  Icons.person_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Enhanced user info
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      review['reviewerName'] ??
+                                          'Anonymous User',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (review['timestamp'] != null)
+                                      Text(
+                                        _formatReviewDate(review['timestamp']),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
                                         ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            review['reviewerPhone'],
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              // Enhanced rating display
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: Colors.amber,
+                                      size: 14,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      (review['rating'] as double)
+                                          .toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Enhanced comment section
+                          if ((review['comment'] as String).isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[200]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    review['comment'],
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppColors.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                    maxLines: isExpanded ? null : 3,
+                                    overflow:
+                                        isExpanded
+                                            ? null
+                                            : TextOverflow.ellipsis,
+                                  ),
+                                  if ((review['comment'] as String).length >
+                                      100)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _expandedReviews[review['reviewId']] =
+                                                !isExpanded;
+                                          });
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              isExpanded
+                                                  ? 'Show less'
+                                                  : 'Read more',
+                                              style: const TextStyle(
+                                                color: AppColors.primary,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              isExpanded
+                                                  ? Icons
+                                                      .keyboard_arrow_up_rounded
+                                                  : Icons
+                                                      .keyboard_arrow_down_rounded,
+                                              color: AppColors.primary,
+                                              size: 16,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+
+                          // Contact info (if expanded)
+                          if (isExpanded) ...[
+                            const SizedBox(height: 8),
+                            if ((review['reviewerEmail'] as String?)
+                                        ?.isNotEmpty ==
+                                    true ||
+                                (review['reviewerPhone'] as String?)
+                                        ?.isNotEmpty ==
+                                    true)
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    if ((review['reviewerEmail'] as String?)
+                                            ?.isNotEmpty ==
+                                        true)
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.email_rounded,
+                                            size: 14,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              review['reviewerEmail'],
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
                                             ),
                                           ),
+                                        ],
+                                      ),
+                                    if ((review['reviewerPhone'] as String?)
+                                            ?.isNotEmpty ==
+                                        true)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.phone_rounded,
+                                              size: 14,
+                                              color: AppColors.primary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                review['reviewerPhone'],
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
             ),
+
           if (hiddenCount > 0)
             Padding(
               padding: const EdgeInsets.only(top: 4.0),
@@ -2425,35 +2448,36 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 // Compact avatar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: agent?.avatar != null && agent!.avatar!.isNotEmpty
-                      ? Image.network(
-                          agent.avatar!,
-                          width: 40,
-                          height: 40,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 40,
-                              height: 40,
-                              color: Colors.grey[300],
-                              child: const Icon(
-                                Icons.person_rounded,
-                                color: AppColors.secondary,
-                                size: 20,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 40,
-                          height: 40,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.person_rounded,
-                            color: AppColors.secondary,
-                            size: 20,
+                  child:
+                      agent?.avatar != null && agent!.avatar!.isNotEmpty
+                          ? Image.network(
+                            agent.avatar!,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 40,
+                                height: 40,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.person_rounded,
+                                  color: AppColors.secondary,
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          )
+                          : Container(
+                            width: 40,
+                            height: 40,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.secondary,
+                              size: 20,
+                            ),
                           ),
-                        ),
                 ),
                 const SizedBox(width: 12),
 
@@ -2515,92 +2539,98 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                                 const SizedBox(width: 2),
                                 _agentRatingLoading
                                     ? const SizedBox(
-                                        width: 12,
-                                        height: 12,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 1,
-                                        ),
-                                      )
-                                    : Text(
-                                        _agentRating != null
-                                            ? '${_agentRating!.toStringAsFixed(1)}'
-                                            : '0.0',
-                                        style: const TextStyle(
-                                          color: AppColors.textPrimary,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1,
                                       ),
-                          ],
-                        ),
+                                    )
+                                    : Text(
+                                      _agentRating != null
+                                          ? '${_agentRating!.toStringAsFixed(1)}'
+                                          : '0.0',
+                                      style: const TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ),
+                          if (agent != null &&
+                              agent.phone != null &&
+                              agent.phone!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    agent.phone!,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (agent != null && agent.email.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.email,
+                                    size: 14,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    agent.email,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (agentId != null && agentId.isNotEmpty && !isSelf)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: OutlinedButton.icon(
+                                onPressed:
+                                    () => _showSubmitReviewSheet(agentId),
+                                icon: const Icon(Icons.rate_review, size: 18),
+                                label: const Text('Write a Review'),
+                              ),
+                            ),
+                          if (isSelf)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: OutlinedButton.icon(
+                                onPressed: null,
+                                icon: const Icon(Icons.rate_review, size: 18),
+                                label: const Text('You cannot review yourself'),
+                              ),
+                            ),
+                        ],
                       ),
-                      if (agent != null &&
-                          agent.phone != null &&
-                          agent.phone!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.phone,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                agent.phone!,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
+                      // Contact buttons
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildAgentContactButton(Icons.phone, Colors.green),
+                          const SizedBox(width: 8),
+                          _buildAgentContactButton(
+                            Icons.message,
+                            AppColors.primary,
                           ),
-                        ),
-                      if (agent != null && agent.email.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2.0),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.email,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                agent.email,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (agentId != null && agentId.isNotEmpty && !isSelf)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showSubmitReviewSheet(agentId),
-                            icon: const Icon(Icons.rate_review, size: 18),
-                            label: const Text('Write a Review'),
-                          ),
-                        ),
-                      if (isSelf)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: OutlinedButton.icon(
-                            onPressed: null,
-                            icon: const Icon(Icons.rate_review, size: 18),
-                            label: const Text('You cannot review yourself'),
-                          ),
-                        ),
+                        ],
+                      ),
                     ],
                   ),
-                ),
-                // Contact buttons
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildAgentContactButton(Icons.phone, Colors.green),
-                    const SizedBox(width: 8),
-                    _buildAgentContactButton(Icons.message, AppColors.primary),
-                  ],
                 ),
               ],
             ),
