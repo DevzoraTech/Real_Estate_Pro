@@ -13,6 +13,7 @@ import '../bloc/featured_property_bloc.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../auth/presentation/pages/login_page.dart';
 
 const supportedCurrencies = [
   {'code': 'USD', 'symbol': ' 4'},
@@ -818,6 +819,48 @@ Future<Map<String, dynamic>> fetchPropertyReviewStats(String propertyId) async {
   return {'rating': sum / reviews.length, 'reviewsCount': reviews.length};
 }
 
+Widget buildFavoriteIcon(String propertyId) {
+  final user = UserProfile.currentUserProfile;
+  final userId = user?['uid'];
+  if (userId == null) {
+    return const Icon(Icons.favorite_border, size: 18, color: Colors.grey);
+  }
+  return StreamBuilder<DocumentSnapshot>(
+    stream:
+        FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('favorites')
+            .doc(propertyId)
+            .snapshots(),
+    builder: (context, snapshot) {
+      final isFavorite = snapshot.hasData && snapshot.data!.exists;
+      return GestureDetector(
+        onTap: () async {
+          final favDoc = FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('favorites')
+              .doc(propertyId);
+          if (isFavorite) {
+            await favDoc.delete();
+          } else {
+            await favDoc.set({
+              'propertyId': propertyId,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+          }
+        },
+        child: Icon(
+          isFavorite ? Icons.favorite : Icons.favorite_border,
+          color: isFavorite ? Colors.red : Colors.grey,
+          size: 18,
+        ),
+      );
+    },
+  );
+}
+
 class ModernPropertyCard extends StatelessWidget {
   final Property property;
   final VoidCallback onTap;
@@ -865,17 +908,26 @@ class ModernPropertyCard extends StatelessWidget {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(16),
                         ),
-                        child: Image.network(
-                          property.mainImage.isNotEmpty
-                              ? property.mainImage
-                              : 'https://via.placeholder.com/150', // fallback placeholder
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Center(
-                              child: Icon(Icons.image_not_supported, size: 40),
-                            );
-                          },
-                        ),
+                        child:
+                            (property.images.isNotEmpty &&
+                                    property.images[0]
+                                        .toString()
+                                        .trim()
+                                        .isNotEmpty)
+                                ? Image.network(
+                                  property.images[0],
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Image.asset(
+                                      'assets/images/house.png',
+                                      fit: BoxFit.cover,
+                                    );
+                                  },
+                                )
+                                : Image.asset(
+                                  'assets/images/house.png',
+                                  fit: BoxFit.cover,
+                                ),
                       ),
                     ),
                     Positioned(
@@ -887,7 +939,7 @@ class ModernPropertyCard extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(Icons.favorite_border, size: 18),
+                        child: buildFavoriteIcon(property.id),
                       ),
                     ),
                     if (property.isFeatured)
@@ -1079,17 +1131,23 @@ class CompactPropertyCard extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    property.mainImage.isNotEmpty
-                        ? property.mainImage
-                        : 'https://via.placeholder.com/150', // fallback placeholder
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Icon(Icons.image_not_supported, size: 30),
-                      );
-                    },
-                  ),
+                  child:
+                      (property.images.isNotEmpty &&
+                              property.images[0].toString().trim().isNotEmpty)
+                          ? Image.network(
+                            property.images[0],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.asset(
+                                'assets/images/house.png',
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                          : Image.asset(
+                            'assets/images/house.png',
+                            fit: BoxFit.cover,
+                          ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1204,7 +1262,7 @@ class CompactPropertyCard extends StatelessWidget {
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Icon(Icons.favorite_border, size: 18),
+                child: buildFavoriteIcon(property.id),
               ),
             ],
           ),
@@ -1385,7 +1443,8 @@ class LargeImagePropertyCard extends StatelessWidget {
                 top: Radius.circular(16),
               ),
               child:
-                  property.images.isNotEmpty
+                  property.images.isNotEmpty &&
+                          property.images[0].toString().trim().isNotEmpty
                       ? Image.network(
                         property.images.first,
                         height: 160,
@@ -1403,12 +1462,11 @@ class LargeImagePropertyCard extends StatelessWidget {
                               ),
                             ),
                       )
-                      : Container(
+                      : Image.asset(
+                        'assets/images/house.png',
                         height: 160,
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: Icon(Icons.image_not_supported, size: 40),
-                        ),
+                        width: double.infinity,
+                        fit: BoxFit.cover,
                       ),
             ),
             Padding(

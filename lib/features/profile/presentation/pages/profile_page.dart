@@ -552,15 +552,25 @@ class _ProfilePageState extends State<ProfilePage>
                             top: Radius.circular(12),
                           ),
                           image:
-                              data['images'] is List &&
-                                      (data['images'] as List).isNotEmpty
+                              (data['images'] is List &&
+                                      (data['images'] as List).isNotEmpty &&
+                                      (data['images'] as List)[0]
+                                          .toString()
+                                          .trim()
+                                          .isNotEmpty)
                                   ? DecorationImage(
                                     image: NetworkImage(
-                                      (data['images'] as List).first,
+                                      (data['images'] as List)[0],
                                     ),
                                     fit: BoxFit.cover,
+                                    onError: (exception, stackTrace) {},
                                   )
-                                  : null,
+                                  : DecorationImage(
+                                    image: AssetImage(
+                                      'assets/images/house.png',
+                                    ),
+                                    fit: BoxFit.cover,
+                                  ),
                           color: Colors.grey[200],
                         ),
                         child:
@@ -702,6 +712,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            Expanded(child: buildFavoriteIcon(docs[index].id)),
                           ],
                         ),
                       ],
@@ -711,6 +723,48 @@ class _ProfilePageState extends State<ProfilePage>
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget buildFavoriteIcon(String propertyId) {
+    final user = FirebaseAuth.instance.currentUser;
+    final userId = user?.uid;
+    if (userId == null) {
+      return const Icon(Icons.favorite_border, size: 18, color: Colors.grey);
+    }
+    return StreamBuilder<DocumentSnapshot>(
+      stream:
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('favorites')
+              .doc(propertyId)
+              .snapshots(),
+      builder: (context, snapshot) {
+        final isFavorite = snapshot.hasData && snapshot.data!.exists;
+        return GestureDetector(
+          onTap: () async {
+            final favDoc = FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('favorites')
+                .doc(propertyId);
+            if (isFavorite) {
+              await favDoc.delete();
+            } else {
+              await favDoc.set({
+                'propertyId': propertyId,
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+            }
+          },
+          child: Icon(
+            isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: isFavorite ? Colors.red : Colors.grey,
+            size: 18,
+          ),
         );
       },
     );

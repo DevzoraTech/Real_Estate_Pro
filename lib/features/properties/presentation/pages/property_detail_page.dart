@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../chat/presentation/chat_page.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/helpers.dart';
+import 'package:get_it/get_it.dart';
+import '../../domain/repositories/property_repository.dart';
 
 extension PropertyModelExtension on PropertyModel {
   static PropertyModel fromProperty(Property p) => PropertyModel(
@@ -100,76 +102,16 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   List<Map<String, dynamic>> _propertyReviews = [];
   bool _propertyReviewsLoading = false;
   int _propertyTotalReviews = 0;
-  // Add a state to track expanded reviews
   Map<String, bool> _expandedReviews = {};
   double? _newReviewRating;
   final TextEditingController _reviewCommentController =
       TextEditingController();
   bool _submittingReview = false;
 
-  // Mock data for additional features
-  final Map<String, dynamic> _additionalData = {
-    'features': [
-      'Swimming Pool',
-      'Garden',
-      'Smart Home',
-      'Security System',
-      'Outdoor Kitchen',
-      'Home Theater',
-      'Wine Cellar',
-      'Gym',
-    ],
-    'agent': {
-      'name': 'Sarah Johnson',
-      'phone': '+1 (555) 123-4567',
-      'email': 'sarah.johnson@realestate.com',
-      'photo':
-          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200',
-      'rating': 4.9,
-      'reviews': 124,
-    },
-    'rating': 4.8,
-    'reviews': 32,
-    'similarProperties': [
-      {
-        'id': '2',
-        'title': 'Modern Apartment',
-        'price': 450000,
-        'image':
-            'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-        'bedrooms': 2,
-        'bathrooms': 2,
-        'area': 1200,
-      },
-      {
-        'id': '3',
-        'title': 'Cozy Townhouse',
-        'price': 520000,
-        'image':
-            'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400',
-        'bedrooms': 3,
-        'bathrooms': 2,
-        'area': 1600,
-      },
-      {
-        'id': '4',
-        'title': 'Luxury Condo',
-        'price': 750000,
-        'image':
-            'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400',
-        'bedrooms': 3,
-        'bathrooms': 3,
-        'area': 2000,
-      },
-    ],
-  };
+  final PropertyRepository _propertyRepository = GetIt.I<PropertyRepository>();
 
-  final List<String> _images = [
-    'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400',
-    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-    'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-  ];
+  // Add this near the top of _PropertyDetailPageState:
+  static const List<String> _images = [];
 
   @override
   void initState() {
@@ -179,7 +121,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       _isLoading = false;
       _fetchIsFeatured(widget.property!.id);
       _fetchPropertyReviews();
-      _fetchAgentUser(); // Ensure agent info is loaded
+      _fetchAgentUser();
+      _checkIfFavorite();
     } else if (widget.propertyId != null) {
       _loadProperty(widget.propertyId!);
       _fetchIsFeatured(widget.propertyId!);
@@ -207,6 +150,50 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       _isLoading = false;
     });
     _fetchAgentUser();
+    _checkIfFavorite();
+  }
+
+  void _checkIfFavorite() async {
+    final propertyId = _property?.id ?? widget.propertyId;
+    final user = UserProfile.currentUserProfile;
+    final userId = user?['uid'];
+    if (propertyId == null || userId == null) return;
+    final favDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('favorites')
+            .doc(propertyId)
+            .get();
+    setState(() => _isFavorite = favDoc.exists);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final propertyId = _property?.id ?? widget.propertyId;
+    if (propertyId == null) return;
+    final user = UserProfile.currentUserProfile;
+    final userId = user?['uid'];
+    if (userId == null) return;
+    setState(() => _isFavorite = !_isFavorite);
+    final favDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('favorites')
+        .doc(propertyId);
+    if (_isFavorite) {
+      await favDoc.set({
+        'propertyId': propertyId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Added to favorites')));
+    } else {
+      await favDoc.delete();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Removed from favorites')));
+    }
   }
 
   void _fetchIsFeatured(String propertyId) async {
@@ -557,7 +544,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                                 _buildDescription(),
                                 _buildAmenities(),
                                 _buildLocation(),
-                                _buildPropertyReviews(),
+                                _buildPropertyReviews(property.id),
                                 _buildAgentInfo(),
                                 _buildAgentReviews(),
                                 _buildSimilarProperties(),
@@ -585,7 +572,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                         ),
                         _buildCircleButton(
                           _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          () => setState(() => _isFavorite = !_isFavorite),
+                          _toggleFavorite,
                           color: _isFavorite ? Colors.red : null,
                         ),
                       ],
@@ -605,7 +592,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
   Widget _buildImageGallery() {
     final images =
-        _property?.images.isNotEmpty == true ? _property!.images : _images;
+        _property?.images != null &&
+                _property!.images.isNotEmpty &&
+                _property!.images[0].toString().trim().isNotEmpty
+            ? _property!.images
+            : [''];
     return SliverAppBar(
       expandedHeight: 300,
       backgroundColor: Colors.transparent,
@@ -622,18 +613,18 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               });
             },
             itemBuilder: (context, index) {
-              return Image.network(
-                images[index],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported, size: 50),
-                    ),
-                  );
-                },
-              );
+              return (images[index].isNotEmpty)
+                  ? Image.network(
+                    images[index],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/house.png',
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                  : Image.asset('assets/images/house.png', fit: BoxFit.cover);
             },
           ),
 
@@ -843,7 +834,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             '${property?.parkingSpaces}',
             'Garage',
           ),
-          _buildFeatureItem(Icons.calendar_today, '2020', 'Year'),
+          _buildFeatureItem(
+            Icons.calendar_today,
+            property?.createdAt?.year?.toString() ?? '-',
+            'Year',
+          ),
         ],
       ),
     );
@@ -1058,14 +1053,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     );
   }
 
-  Widget _buildPropertyReviews() {
-    if (_propertyReviewsLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    final propertyId = _property?.id ?? widget.propertyId;
+  Widget _buildPropertyReviews(String propertyId) {
     final currentUserId = UserProfile.currentUserProfile?['uid'] ?? '';
     final hasReviewed = _propertyReviews.any(
       (r) => r['userId'] == currentUserId,
@@ -1081,7 +1069,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             'Property Reviews',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          if (!hasReviewed && propertyId != null)
+          if (!hasReviewed && propertyId.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
               child: Align(
@@ -1246,7 +1234,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                         onPressed:
                             () => _showEditPropertyReviewSheet(
                               review,
-                              propertyId!,
+                              propertyId,
                             ),
                       ),
                   ],
@@ -1286,220 +1274,6 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         ],
       ),
     );
-  }
-
-  void _showSubmitPropertyReviewSheet(String propertyId) {
-    _newReviewRating = null;
-    _reviewCommentController.clear();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Write a Property Review',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  RatingBar.builder(
-                    initialRating: 0,
-                    minRating: 1,
-                    direction: Axis.horizontal,
-                    allowHalfRating: true,
-                    itemCount: 5,
-                    itemSize: 32,
-                    unratedColor: Colors.grey[300],
-                    itemBuilder:
-                        (context, _) =>
-                            const Icon(Icons.star, color: Colors.amber),
-                    onRatingUpdate: (rating) => _newReviewRating = rating,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _reviewCommentController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Comment',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed:
-                          _submittingReview
-                              ? null
-                              : () => _submitPropertyReview(propertyId),
-                      child:
-                          _submittingReview
-                              ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : const Text('Submit Review'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
-
-  void _showEditPropertyReviewSheet(
-    Map<String, dynamic> review,
-    String propertyId,
-  ) {
-    double? _editRating = review['rating'];
-    final TextEditingController _editCommentController = TextEditingController(
-      text: review['comment'] ?? '',
-    );
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Edit Property Review',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  RatingBar.builder(
-                    initialRating: _editRating ?? 0,
-                    minRating: 1,
-                    direction: Axis.horizontal,
-                    allowHalfRating: true,
-                    itemCount: 5,
-                    itemSize: 32,
-                    unratedColor: Colors.grey[300],
-                    itemBuilder:
-                        (context, _) =>
-                            const Icon(Icons.star, color: Colors.amber),
-                    onRatingUpdate: (rating) => _editRating = rating,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _editCommentController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Comment',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (_editRating == null ||
-                            _editCommentController.text.trim().isEmpty)
-                          return;
-                        Navigator.pop(context);
-                        await _updateReview(
-                          propertyId,
-                          review['reviewId'],
-                          _editRating!,
-                          _editCommentController.text.trim(),
-                        );
-                      },
-                      child: const Text('Save Changes'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-  }
-
-  Future<void> _updateReview(
-    String propertyId,
-    String reviewId,
-    double rating,
-    String comment,
-  ) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('properties')
-          .doc(propertyId)
-          .collection('reviews')
-          .doc(reviewId)
-          .update({
-            'rating': rating,
-            'comment': comment,
-            'timestamp': FieldValue.serverTimestamp(),
-          });
-      await _updatePropertyRatingAndCount(propertyId);
-      _fetchPropertyReviews();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Review updated!')));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update review: ${e.toString()}')),
-      );
-    }
-  }
-
-  Future<void> _updatePropertyRatingAndCount(String propertyId) async {
-    final reviewsSnapshot =
-        await FirebaseFirestore.instance
-            .collection('properties')
-            .doc(propertyId)
-            .collection('reviews')
-            .get();
-    final reviews = reviewsSnapshot.docs;
-    if (reviews.isEmpty) {
-      await FirebaseFirestore.instance
-          .collection('properties')
-          .doc(propertyId)
-          .update({'rating': 0.0, 'reviews_count': 0});
-      return;
-    }
-    double sum = 0;
-    for (final doc in reviews) {
-      final data = doc.data();
-      final rating = (data['rating'] as num?)?.toDouble();
-      if (rating != null) sum += rating;
-    }
-    final avg = sum / reviews.length;
-    await FirebaseFirestore.instance
-        .collection('properties')
-        .doc(propertyId)
-        .update({'rating': avg, 'reviews_count': reviews.length});
   }
 
   Widget _buildAgentInfo() {
@@ -2824,6 +2598,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final currentUser = UserProfile.currentUserProfile;
     if (currentUser == null) return;
     final reviewerId = currentUser['uid'] ?? '';
+    final reviewerName = currentUser['displayName'] ?? '';
+    final reviewerEmail = currentUser['email'] ?? '';
+    final reviewerPhone = currentUser['phone'] ?? '';
     if (_newReviewRating == null ||
         _reviewCommentController.text.trim().isEmpty)
       return;
@@ -2835,6 +2612,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           .collection('reviews')
           .add({
             'userId': reviewerId,
+            'reviewerName': reviewerName,
+            'reviewerEmail': reviewerEmail,
+            'reviewerPhone': reviewerPhone,
             'comment': _reviewCommentController.text.trim(),
             'rating': _newReviewRating,
             'timestamp': FieldValue.serverTimestamp(),
@@ -2844,7 +2624,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       _fetchPropertyReviews();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit review: ${e.toString()}')),
+        SnackBar(content: Text('Failed to submit review: \\${e.toString()}')),
       );
     } finally {
       setState(() => _submittingReview = false);
@@ -3134,5 +2914,226 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 ),
           ),
     );
+  }
+
+  void _showSubmitPropertyReviewSheet(String propertyId) {
+    _newReviewRating = null;
+    _reviewCommentController.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Write a Property Review',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  RatingBar.builder(
+                    initialRating: 0,
+                    minRating: 1,
+                    direction: Axis.horizontal,
+                    allowHalfRating: true,
+                    itemCount: 5,
+                    itemSize: 32,
+                    unratedColor: Colors.grey[300],
+                    itemBuilder:
+                        (context, _) =>
+                            const Icon(Icons.star, color: Colors.amber),
+                    onRatingUpdate: (rating) => _newReviewRating = rating,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _reviewCommentController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Comment',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          _submittingReview
+                              ? null
+                              : () => _submitPropertyReview(propertyId),
+                      child:
+                          _submittingReview
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Text('Submit Review'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  void _showEditPropertyReviewSheet(
+    Map<String, dynamic> review,
+    String propertyId,
+  ) {
+    double? _editRating = review['rating'];
+    final TextEditingController _editCommentController = TextEditingController(
+      text: review['comment'] ?? '',
+    );
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit Property Review',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  RatingBar.builder(
+                    initialRating: _editRating ?? 0,
+                    minRating: 1,
+                    direction: Axis.horizontal,
+                    allowHalfRating: true,
+                    itemCount: 5,
+                    itemSize: 32,
+                    unratedColor: Colors.grey[300],
+                    itemBuilder:
+                        (context, _) =>
+                            const Icon(Icons.star, color: Colors.amber),
+                    onRatingUpdate: (rating) => _editRating = rating,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _editCommentController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Comment',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (_editRating == null ||
+                            _editCommentController.text.trim().isEmpty)
+                          return;
+                        Navigator.pop(context);
+                        await _updateReview(
+                          propertyId,
+                          review['reviewId'],
+                          _editRating!,
+                          _editCommentController.text.trim(),
+                        );
+                      },
+                      child: const Text('Save Changes'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  Future<void> _updatePropertyRatingAndCount(String propertyId) async {
+    final reviewsSnapshot =
+        await FirebaseFirestore.instance
+            .collection('properties')
+            .doc(propertyId)
+            .collection('reviews')
+            .get();
+    final reviews = reviewsSnapshot.docs;
+    if (reviews.isEmpty) {
+      await FirebaseFirestore.instance
+          .collection('properties')
+          .doc(propertyId)
+          .update({'rating': 0.0, 'reviews_count': 0});
+      return;
+    }
+    double sum = 0;
+    for (final doc in reviews) {
+      final data = doc.data();
+      final rating = (data['rating'] as num?)?.toDouble();
+      if (rating != null) sum += rating;
+    }
+    final avg = sum / reviews.length;
+    await FirebaseFirestore.instance
+        .collection('properties')
+        .doc(propertyId)
+        .update({'rating': avg, 'reviews_count': reviews.length});
+  }
+
+  Future<void> _updateReview(
+    String propertyId,
+    String reviewId,
+    double rating,
+    String comment,
+  ) async {
+    final currentUser = UserProfile.currentUserProfile;
+    final reviewerName = currentUser?['displayName'] ?? '';
+    final reviewerEmail = currentUser?['email'] ?? '';
+    final reviewerPhone = currentUser?['phone'] ?? '';
+    try {
+      await FirebaseFirestore.instance
+          .collection('properties')
+          .doc(propertyId)
+          .collection('reviews')
+          .doc(reviewId)
+          .update({
+            'rating': rating,
+            'comment': comment,
+            'timestamp': FieldValue.serverTimestamp(),
+            'reviewerName': reviewerName,
+            'reviewerEmail': reviewerEmail,
+            'reviewerPhone': reviewerPhone,
+          });
+      await _updatePropertyRatingAndCount(propertyId);
+      _fetchPropertyReviews();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Review updated!')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update review: ${e.toString()}')),
+      );
+    }
   }
 }

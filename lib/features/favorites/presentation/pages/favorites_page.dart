@@ -3,6 +3,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/models/property_model.dart';
 import '../../../../core/utils/helpers.dart';
+import 'package:get_it/get_it.dart';
+import '../../../properties/domain/repositories/property_repository.dart';
+import '../../../../core/error/failures.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../auth/presentation/pages/login_page.dart';
+import 'package:mobile_1/features/properties/data/repositories/property_repository_impl.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -14,6 +20,9 @@ class FavoritesPage extends StatefulWidget {
 class _FavoritesPageState extends State<FavoritesPage> {
   List<PropertyModel> _favorites = [];
   bool _isLoading = true;
+  bool _clearingFavorites = false;
+
+  final PropertyRepository _propertyRepository = GetIt.I<PropertyRepository>();
 
   @override
   void initState() {
@@ -22,96 +31,139 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   void _loadFavorites() async {
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Mock favorite properties
-    final mockFavorites = [
-      PropertyModel(
-        id: '1',
-        title: 'Luxury Villa Paradise',
-        description: 'Stunning luxury villa with ocean views',
-        type: 'Villa',
-        status: 'for_sale',
-        price: 1250000,
-        area: 3500,
-        bedrooms: 4,
-        bathrooms: 3,
-        address: '789 Ocean Drive',
-        city: 'Miami',
-        state: 'FL',
-        zipCode: '33139',
-        latitude: 25.7617,
-        longitude: -80.1918,
-        images: [
-          'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400',
-        ],
-        amenities: ['Pool', 'Ocean View', 'Garage'],
-        ownerId: 'owner1',
-        isFeatured: true,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        updatedAt: DateTime.now(),
-      ),
-      PropertyModel(
-        id: '2',
-        title: 'Modern Downtown Apartment',
-        description: 'Beautiful modern apartment in downtown',
-        type: 'Apartment',
-        status: 'for_sale',
-        price: 450000,
-        area: 1200,
-        bedrooms: 2,
-        bathrooms: 2,
-        address: '123 Main St',
-        city: 'San Francisco',
-        state: 'CA',
-        zipCode: '94102',
-        latitude: 37.7749,
-        longitude: -122.4194,
-        images: [
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-        ],
-        amenities: ['Gym', 'Pool', 'Parking'],
-        ownerId: 'owner1',
-        isFeatured: true,
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        updatedAt: DateTime.now(),
-      ),
-    ];
-
     setState(() {
-      _favorites = mockFavorites;
+      _isLoading = true;
+    });
+    final user = UserProfile.currentUserProfile;
+    final userId = user?['uid'];
+    List<String> firestoreFavoriteIds = [];
+    if (userId != null) {
+      // Load favorite IDs from Firestore
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('favorites')
+              .get();
+      firestoreFavoriteIds = snapshot.docs.map((doc) => doc.id).toList();
+    }
+    // Fetch property data for all favorite IDs directly from Firestore
+    List<PropertyModel> favoriteProperties = [];
+    for (final id in firestoreFavoriteIds) {
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('properties')
+              .doc(id)
+              .get();
+      if (doc.exists) {
+        final property = PropertyModel.fromFirestore(id, doc.data()!);
+        favoriteProperties.add(property);
+      }
+    }
+    setState(() {
+      _favorites = favoriteProperties;
       _isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = UserProfile.currentUserProfile;
+    final userId = user?['uid'];
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Favorites')),
+        body: const Center(child: Text('Please log in to view favorites.')),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Favorites'),
         actions: [
-          if (_favorites.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear_all),
-              onPressed: () {
-                _showClearAllDialog();
-              },
-            ),
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(userId)
+                    .collection('favorites')
+                    .snapshots(),
+            builder: (context, snapshot) {
+              final hasFavorites =
+                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+              if (!hasFavorites) return const SizedBox.shrink();
+              return IconButton(
+                icon:
+                    _clearingFavorites
+                        ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.clear_all),
+                onPressed:
+                    _clearingFavorites
+                        ? null
+                        : () {
+                          _showClearAllDialog(userId);
+                        },
+                tooltip:
+                    _clearingFavorites ? 'Clearing...' : 'Clear All Favorites',
+              );
+            },
+          ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _favorites.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
+      body: StreamBuilder<QuerySnapshot>(
+        stream:
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('favorites')
+                .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) return _buildEmptyState();
+          return FutureBuilder<List<PropertyModel>>(
+            future: _fetchFavoriteProperties(docs),
+            builder: (context, propSnapshot) {
+              if (propSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final favorites = propSnapshot.data ?? [];
+              return ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: _favorites.length,
+                itemCount: favorites.length,
                 itemBuilder: (context, index) {
-                  return _buildFavoriteCard(_favorites[index]);
+                  return _buildFavoriteCard(favorites[index], userId);
                 },
-              ),
+              );
+            },
+          );
+        },
+      ),
     );
+  }
+
+  Future<List<PropertyModel>> _fetchFavoriteProperties(
+    List<QueryDocumentSnapshot> docs,
+  ) async {
+    List<PropertyModel> favoriteProperties = [];
+    for (final doc in docs) {
+      final id = doc.id;
+      final propDoc =
+          await FirebaseFirestore.instance
+              .collection('properties')
+              .doc(id)
+              .get();
+      if (propDoc.exists) {
+        final property = PropertyModel.fromFirestore(id, propDoc.data()!);
+        favoriteProperties.add(property);
+      }
+    }
+    return favoriteProperties;
   }
 
   Widget _buildEmptyState() {
@@ -152,7 +204,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  Widget _buildFavoriteCard(PropertyModel property) {
+  Widget _buildFavoriteCard(PropertyModel property, String userId) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -204,8 +256,13 @@ class _FavoritesPageState extends State<FavoritesPage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: InkWell(
-                      onTap: () {
-                        _removeFavorite(property);
+                      onTap: () async {
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .collection('favorites')
+                            .doc(property.id)
+                            .delete();
                       },
                       child: const Icon(
                         Icons.favorite,
@@ -342,7 +399,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
     );
   }
 
-  void _showClearAllDialog() {
+  void _showClearAllDialog(String userId) {
     showDialog(
       context: context,
       builder:
@@ -357,16 +414,47 @@ class _FavoritesPageState extends State<FavoritesPage> {
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _favorites.clear();
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('All favorites cleared')),
-                  );
-                },
-                child: const Text('Clear All'),
+                onPressed:
+                    _clearingFavorites
+                        ? null
+                        : () async {
+                          setState(() => _clearingFavorites = true);
+                          Navigator.pop(context);
+                          try {
+                            final favs =
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(userId)
+                                    .collection('favorites')
+                                    .get();
+                            for (final doc in favs.docs) {
+                              await doc.reference.delete();
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('All favorites cleared'),
+                              ),
+                            );
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Failed to clear favorites: ${e.toString()}',
+                                ),
+                              ),
+                            );
+                          } finally {
+                            setState(() => _clearingFavorites = false);
+                          }
+                        },
+                child:
+                    _clearingFavorites
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Clear All'),
               ),
             ],
           ),
