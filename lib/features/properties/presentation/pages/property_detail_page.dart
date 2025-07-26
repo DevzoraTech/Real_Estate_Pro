@@ -11,6 +11,7 @@ import '../../../chat/presentation/chat_page.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/helpers.dart';
 import 'package:get_it/get_it.dart';
+import '../../../../core/models/user_profile.dart';
 import '../../domain/repositories/property_repository.dart';
 
 extension PropertyModelExtension on PropertyModel {
@@ -102,7 +103,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   List<Map<String, dynamic>> _propertyReviews = [];
   bool _propertyReviewsLoading = false;
   int _propertyTotalReviews = 0;
-  Map<String, bool> _expandedReviews = {};
+  final Map<String, bool> _expandedReviews = {};
   double? _newReviewRating;
   final TextEditingController _reviewCommentController =
       TextEditingController();
@@ -131,12 +132,17 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   }
 
   void _loadProperty(String propertyId) async {
+    print('Loading property with ID: $propertyId'); // Debug print
     final doc =
         await FirebaseFirestore.instance
             .collection('properties')
             .doc(propertyId)
             .get();
+
+    print('Document exists: ${doc.exists}'); // Debug print
+
     if (!doc.exists) {
+      print('Property document not found for ID: $propertyId'); // Debug print
       setState(() {
         _property = null;
         _isLoading = false;
@@ -216,7 +222,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       return;
     }
     final agentId = property.realtorId ?? property.ownerId;
-    if (agentId == null || agentId.isEmpty) {
+    if (agentId.isEmpty) {
       setState(() => _agentLoading = false);
       return;
     }
@@ -1283,7 +1289,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               Expanded(
                 child: _buildCompactFeatureItem(
                   Icons.square_foot_rounded,
-                  '${property?.area?.toInt() ?? 0}',
+                  '${property?.area.toInt() ?? 0}',
                   'Sq Ft',
                   AppColors.accent,
                 ),
@@ -2547,7 +2553,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                                     )
                                     : Text(
                                       _agentRating != null
-                                          ? '${_agentRating!.toStringAsFixed(1)}'
+                                          ? _agentRating!.toStringAsFixed(1)
                                           : '0.0',
                                       style: const TextStyle(
                                         color: AppColors.textPrimary,
@@ -3956,8 +3962,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final reviewerEmail = currentUser['email'] ?? '';
     final reviewerPhone = currentUser['phone'] ?? '';
     if (_newReviewRating == null ||
-        _reviewCommentController.text.trim().isEmpty)
+        _reviewCommentController.text.trim().isEmpty) {
       return;
+    }
     setState(() => _submittingReview = true);
     try {
       await FirebaseFirestore.instance
@@ -3990,8 +3997,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     if (currentUser == null) return;
     final reviewerId = currentUser['uid'] ?? '';
     if (_newReviewRating == null ||
-        _reviewCommentController.text.trim().isEmpty)
+        _reviewCommentController.text.trim().isEmpty) {
       return;
+    }
     setState(() => _submittingReview = true);
     try {
       await FirebaseFirestore.instance
@@ -4016,8 +4024,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   }
 
   void _showEditReviewSheet(Map<String, dynamic> review, String agentId) {
-    double? _editRating = review['rating'];
-    final TextEditingController _editCommentController = TextEditingController(
+    double? editRating = review['rating'];
+    final TextEditingController editCommentController = TextEditingController(
       text: review['comment'] ?? '',
     );
     showModalBottomSheet(
@@ -4045,7 +4053,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   ),
                   const SizedBox(height: 16),
                   RatingBar.builder(
-                    initialRating: _editRating ?? 0,
+                    initialRating: editRating ?? 0,
                     minRating: 1,
                     direction: Axis.horizontal,
                     allowHalfRating: true,
@@ -4055,11 +4063,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     itemBuilder:
                         (context, _) =>
                             const Icon(Icons.star, color: Colors.amber),
-                    onRatingUpdate: (rating) => _editRating = rating,
+                    onRatingUpdate: (rating) => editRating = rating,
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: _editCommentController,
+                    controller: editCommentController,
                     maxLines: 3,
                     decoration: const InputDecoration(
                       labelText: 'Comment',
@@ -4071,15 +4079,16 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        if (_editRating == null ||
-                            _editCommentController.text.trim().isEmpty)
+                        if (editRating == null ||
+                            editCommentController.text.trim().isEmpty) {
                           return;
+                        }
                         Navigator.pop(context);
                         await _updateAgentReview(
                           agentId,
                           review['reviewId'],
-                          _editRating!,
-                          _editCommentController.text.trim(),
+                          editRating!,
+                          editCommentController.text.trim(),
                         );
                       },
                       child: const Text('Save Changes'),
@@ -4351,8 +4360,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     Map<String, dynamic> review,
     String propertyId,
   ) {
-    double? _editRating = review['rating'];
-    final TextEditingController _editCommentController = TextEditingController(
+    double? editRating = review['rating'];
+    final TextEditingController editCommentController = TextEditingController(
       text: review['comment'] ?? '',
     );
     showModalBottomSheet(
@@ -4380,7 +4389,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   ),
                   const SizedBox(height: 16),
                   RatingBar.builder(
-                    initialRating: _editRating ?? 0,
+                    initialRating: editRating ?? 0,
                     minRating: 1,
                     direction: Axis.horizontal,
                     allowHalfRating: true,
@@ -4390,11 +4399,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     itemBuilder:
                         (context, _) =>
                             const Icon(Icons.star, color: Colors.amber),
-                    onRatingUpdate: (rating) => _editRating = rating,
+                    onRatingUpdate: (rating) => editRating = rating,
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: _editCommentController,
+                    controller: editCommentController,
                     maxLines: 3,
                     decoration: const InputDecoration(
                       labelText: 'Comment',
@@ -4406,15 +4415,16 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        if (_editRating == null ||
-                            _editCommentController.text.trim().isEmpty)
+                        if (editRating == null ||
+                            editCommentController.text.trim().isEmpty) {
                           return;
+                        }
                         Navigator.pop(context);
                         await _updateReview(
                           propertyId,
                           review['reviewId'],
-                          _editRating!,
-                          _editCommentController.text.trim(),
+                          editRating!,
+                          editCommentController.text.trim(),
                         );
                       },
                       child: const Text('Save Changes'),

@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/models/user_profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:async';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AddPropertyPage extends StatefulWidget {
   const AddPropertyPage({super.key});
@@ -59,6 +65,23 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     'Dishwasher',
     'Fireplace',
   ];
+
+  // Location variables
+  GoogleMapController? _mapController;
+  LatLng? _selectedLocation;
+  bool _isLoadingLocation = false;
+  bool _isGeocodingAddress = false;
+  Set<Marker> _markers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedLocation = const LatLng(
+      AppConstants.defaultLatitude,
+      AppConstants.defaultLongitude,
+    );
+    _updateMapMarker();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -604,7 +627,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         _buildSectionHeader('Property Location', Icons.location_on),
         const SizedBox(height: 20),
 
-        // Street Address
+        // Street Address with geocoding
         _buildAnimatedContainer(
           child: TextFormField(
             controller: _addressController,
@@ -612,17 +635,35 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
               'Street Address',
               '123 Main St',
               Icons.home,
+              suffixIcon:
+                  _isGeocodingAddress
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: _geocodeAddress,
+                      ),
             ),
             validator:
                 (value) =>
                     value == null || value.trim().isEmpty
                         ? 'Address is required'
                         : null,
+            onChanged: (value) {
+              // Auto-geocode after user stops typing
+              if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+              _debounceTimer = Timer(const Duration(milliseconds: 1500), () {
+                if (value.isNotEmpty) _geocodeAddress();
+              });
+            },
           ),
         ),
         const SizedBox(height: 16),
 
-        // City & State
+        // City & State Row
         Row(
           children: [
             Expanded(
@@ -676,102 +717,145 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
         ),
         const SizedBox(height: 24),
 
-        // Map
+        // Enhanced Map Section
         _buildSectionHeader('Map Location', Icons.map_outlined, fontSize: 18),
         const SizedBox(height: 16),
 
-        _buildAnimatedContainer(
-          padding: EdgeInsets.zero,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
+        // Location coordinates display
+        if (_selectedLocation != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            ),
+            child: Row(
               children: [
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(color: Colors.grey[300]),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.map, size: 48, color: Colors.grey[600]),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Map View',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.7),
-                        ],
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.my_location,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Use Current Location',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Select on Map',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
+                const Icon(Icons.gps_fixed, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Coordinates: ${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
               ],
             ),
           ),
+
+        // Interactive Google Map
+        Container(
+          height: 300,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target:
+                    _selectedLocation ??
+                    const LatLng(
+                      AppConstants.defaultLatitude,
+                      AppConstants.defaultLongitude,
+                    ),
+                zoom: 15,
+              ),
+              markers: _markers,
+              onMapCreated: (GoogleMapController controller) {
+                _mapController = controller;
+                // Move to selected location after map is created
+                if (_selectedLocation != null) {
+                  controller.animateCamera(
+                    CameraUpdate.newLatLngZoom(_selectedLocation!, 15),
+                  );
+                }
+              },
+              onTap: (LatLng location) {
+                setState(() {
+                  _selectedLocation = location;
+                  _updateMapMarker();
+                });
+                _reverseGeocode(location);
+              },
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: true,
+              mapToolbarEnabled: false,
+              mapType: MapType.normal,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Location Action Buttons
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                icon:
+                    _isLoadingLocation
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.my_location, size: 18),
+                label: Text(
+                  _isLoadingLocation
+                      ? 'Getting Location...'
+                      : 'Use Current Location',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _centerMapOnAddress,
+                icon: const Icon(Icons.search_outlined, size: 18),
+                label: const Text('Find Address'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 20),
         _buildInfoCard(
-          'Location Matters',
-          'Properties with accurate map locations receive 75% more inquiries.',
+          'Location Accuracy',
+          'Precise location helps buyers find your property easily and increases visibility by 75%.',
           Icons.location_searching,
           Colors.green,
         ),
@@ -1031,9 +1115,9 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primary.withOpacity(0.1),
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: AppColors.primary, size: fontSize),
+          child: Icon(icon, color: AppColors.primary, size: 20),
         ),
         const SizedBox(width: 12),
         Text(
@@ -1041,7 +1125,7 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+            color: AppColors.textPrimary,
           ),
         ),
       ],
@@ -1120,11 +1204,13 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     String hint,
     IconData icon, {
     int maxLines = 1,
+    Widget? suffixIcon,
   }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
       prefixIcon: Icon(icon, color: AppColors.primary),
+      suffixIcon: suffixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide.none,
@@ -1270,19 +1356,180 @@ class _AddPropertyPageState extends State<AddPropertyPage> {
     print('Finished updating createdAt for all properties.');
   }
 
+  Timer? _debounceTimer;
+
+  void _updateMapMarker() {
+    if (_selectedLocation != null) {
+      setState(() {
+        _markers = {
+          Marker(
+            markerId: const MarkerId('property_location'),
+            position: _selectedLocation!,
+            infoWindow: const InfoWindow(
+              title: 'Property Location',
+              snippet: 'Tap to move marker',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
+          ),
+        };
+      });
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+
+    try {
+      // Check and request location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied');
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied');
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final newLocation = LatLng(position.latitude, position.longitude);
+
+      setState(() {
+        _selectedLocation = newLocation;
+        _updateMapMarker();
+      });
+
+      // Move camera to current location
+      if (_mapController != null) {
+        await _mapController!.animateCamera(
+          CameraUpdate.newLatLngZoom(newLocation, 16),
+        );
+      }
+
+      // Reverse geocode to fill address fields
+      await _reverseGeocode(newLocation);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Current location obtained successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to get location: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  Future<void> _geocodeAddress() async {
+    final address = _addressController.text.trim();
+    final city = _cityController.text.trim();
+    final state = _stateController.text.trim();
+
+    if (address.isEmpty) return;
+
+    setState(() => _isGeocodingAddress = true);
+
+    try {
+      final fullAddress = '$address, $city, $state';
+      List<Location> locations = await locationFromAddress(fullAddress);
+
+      if (locations.isNotEmpty) {
+        final location = locations.first;
+        final newLocation = LatLng(location.latitude, location.longitude);
+
+        setState(() {
+          _selectedLocation = newLocation;
+          _updateMapMarker();
+        });
+
+        // Move camera to geocoded location
+        if (_mapController != null) {
+          await _mapController!.animateCamera(
+            CameraUpdate.newLatLngZoom(newLocation, 16),
+          );
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Address located on map!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not find address: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isGeocodingAddress = false);
+    }
+  }
+
+  Future<void> _reverseGeocode(LatLng location) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        location.latitude,
+        location.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks.first;
+
+        setState(() {
+          if (placemark.street != null && placemark.street!.isNotEmpty) {
+            _addressController.text = placemark.street!;
+          }
+          if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+            _cityController.text = placemark.locality!;
+          }
+          if (placemark.administrativeArea != null &&
+              placemark.administrativeArea!.isNotEmpty) {
+            _stateController.text = placemark.administrativeArea!;
+          }
+          if (placemark.postalCode != null &&
+              placemark.postalCode!.isNotEmpty) {
+            _zipCodeController.text = placemark.postalCode!;
+          }
+        });
+      }
+    } catch (e) {
+      print('Reverse geocoding failed: $e');
+    }
+  }
+
+  Future<void> _centerMapOnAddress() async {
+    await _geocodeAddress();
+  }
+
   @override
   void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _priceController.dispose();
-    _areaController.dispose();
-    _bedroomsController.dispose();
-    _bathroomsController.dispose();
-    _addressController.dispose();
-    _cityController.dispose();
-    _stateController.dispose();
-    _zipCodeController.dispose();
-    _parkingController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 }

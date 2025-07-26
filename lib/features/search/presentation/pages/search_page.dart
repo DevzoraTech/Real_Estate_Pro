@@ -1,10 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/property_model.dart';
-
+import '../../../../core/models/user_profile.dart';
+import '../../../../core/constants/app_constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/pages/login_page.dart';
+import '../../../../core/routes/app_routes.dart';
 
 class MapGridPainter extends CustomPainter {
   @override
@@ -43,51 +45,73 @@ class _SearchPageState extends State<SearchPage>
   final _searchController = TextEditingController();
   String _selectedType = 'All';
   String _selectedStatus = 'All';
-  RangeValues _priceRange = const RangeValues(
-    0,
-    15000,
-  ); // €0 to €500/night * 30 days
+  RangeValues _priceRange = const RangeValues(0, 15000);
   int _minBedrooms = 0;
   int _minBathrooms = 0;
   final bool _showMap = false;
   bool _isLoading = false;
   late TabController _tabController;
 
+  // Add these for search functionality
+  String _searchQuery = '';
+  Timer? _debounceTimer;
+  List<PropertyModel> _searchResults = [];
+  bool _isSearching = false;
+  String _sortBy = 'Recently Added';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // _loadInitialResults(); // Remove this, as we use Firestore stream now
+    _searchController.addListener(_onSearchChanged);
   }
 
-  // Remove _loadInitialResults and _searchResults
+  void _onSearchChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.trim();
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Search Header
-            _buildSearchHeader(),
-
-            // Tab Bar
-            TabBar(
-              controller: _tabController,
-              tabs: const [Tab(text: 'List'), Tab(text: 'Map')],
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primary,
-            ),
-
-            // Tab Content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [_buildListView(), _buildMapView()],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverAppBar(
+              expandedHeight: 280, // Increased to accommodate all content
+              floating: true,
+              pinned: false,
+              snap: true,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              flexibleSpace: FlexibleSpaceBar(
+                background: _buildSearchHeader(),
+                collapseMode: CollapseMode.pin,
               ),
             ),
-          ],
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _TabBarDelegate(
+                TabBar(
+                  controller: _tabController,
+                  tabs: const [Tab(text: 'List'), Tab(text: 'Map')],
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primary,
+                ),
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: [_buildListView(), _buildMapView()],
         ),
       ),
     );
@@ -95,37 +119,32 @@ class _SearchPageState extends State<SearchPage>
 
   Widget _buildSearchHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppColors.primary.withOpacity(0.02), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withOpacity(0.1),
+            AppColors.primary.withOpacity(0.05),
+          ],
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Enhanced header with modern styling
           Row(
             children: [
               Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_rounded, size: 20),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                child: Icon(
+                  Icons.search_rounded,
+                  color: AppColors.primary,
+                  size: 24,
                 ),
               ),
               const SizedBox(width: 16),
@@ -150,42 +169,6 @@ class _SearchPageState extends State<SearchPage>
                       ),
                     ),
                   ],
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: Stack(
-                    children: [
-                      const Icon(Icons.tune_rounded, size: 20),
-                      if (_hasActiveFilters())
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  onPressed: () {
-                    _showFilterBottomSheet();
-                  },
                 ),
               ),
             ],
@@ -214,54 +197,58 @@ class _SearchPageState extends State<SearchPage>
                   padding: const EdgeInsets.all(12),
                   child: Icon(
                     Icons.search_rounded,
-                    color: AppColors.primary,
+                    color:
+                        _searchQuery.isNotEmpty
+                            ? AppColors.primary
+                            : Colors.grey[500],
                     size: 22,
                   ),
                 ),
-                suffixIcon:
-                    _searchController.text.isNotEmpty
-                        ? GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _searchController.clear();
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.all(12),
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        )
-                        : Container(
-                          margin: const EdgeInsets.all(12),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchQuery.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.all(8),
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: Colors.grey[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
-                            Icons.my_location_rounded,
+                          child: Icon(
+                            Icons.close_rounded,
                             size: 16,
-                            color: AppColors.primary,
+                            color: Colors.grey[600],
                           ),
                         ),
+                      ),
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.tune_rounded,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
+                        onPressed: _showFilterBottomSheet,
+                        tooltip: 'Filters',
+                      ),
+                    ),
+                  ],
+                ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 16,
                 ),
               ),
-              onChanged: (value) {
-                setState(() {});
-              },
             ),
           ),
           const SizedBox(height: 16),
@@ -277,7 +264,8 @@ class _SearchPageState extends State<SearchPage>
         _minBedrooms > 0 ||
         _minBathrooms > 0 ||
         _priceRange.start > 0 ||
-        _priceRange.end < 1000000;
+        _priceRange.end < 15000 ||
+        _searchQuery.isNotEmpty;
   }
 
   Widget _buildActiveFilterChips() {
@@ -355,6 +343,8 @@ class _SearchPageState extends State<SearchPage>
 
   Query _buildPropertyQuery() {
     Query query = FirebaseFirestore.instance.collection('properties');
+
+    // Apply filters
     if (_selectedType != 'All') {
       query = query.where('type', isEqualTo: _selectedType);
     }
@@ -367,158 +357,159 @@ class _SearchPageState extends State<SearchPage>
     if (_minBathrooms > 0) {
       query = query.where('bathrooms', isGreaterThanOrEqualTo: _minBathrooms);
     }
-    // Price range (per month)
-    if (_priceRange.start > 0) {
-      query = query.where('price', isGreaterThanOrEqualTo: _priceRange.start);
+
+    // Price range filtering will be done client-side due to Firestore limitations
+    return query.orderBy('createdAt', descending: true).limit(100);
+  }
+
+  List<PropertyModel> _filterProperties(List<PropertyModel> properties) {
+    List<PropertyModel> filtered = properties;
+
+    // Apply price range filter
+    filtered =
+        filtered.where((property) {
+          return property.price >= _priceRange.start &&
+              property.price <= _priceRange.end;
+        }).toList();
+
+    // Apply text search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered =
+          filtered.where((property) {
+            return property.title.toLowerCase().contains(query) ||
+                property.description.toLowerCase().contains(query) ||
+                property.city.toLowerCase().contains(query) ||
+                property.address.toLowerCase().contains(query) ||
+                property.state.toLowerCase().contains(query) ||
+                property.type.toLowerCase().contains(query) ||
+                property.amenities.any(
+                  (amenity) => amenity.toLowerCase().contains(query),
+                );
+          }).toList();
     }
-    if (_priceRange.end < 1000000) {
-      query = query.where('price', isLessThanOrEqualTo: _priceRange.end);
+
+    // Apply sorting
+    switch (_sortBy) {
+      case 'Price: Low to High':
+        filtered.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        filtered.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Bedrooms':
+        filtered.sort((a, b) => b.bedrooms.compareTo(a.bedrooms));
+        break;
+      case 'Area Size':
+        filtered.sort((a, b) => b.area.compareTo(a.area));
+        break;
+      case 'Most Popular':
+        // Sort by featured properties first, then by creation date
+        filtered.sort((a, b) {
+          if (a.isFeatured && !b.isFeatured) return -1;
+          if (!a.isFeatured && b.isFeatured) return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case 'Recently Added':
+      default:
+        // Keep original order (most recent first from Firestore)
+        break;
     }
-    return query;
+
+    return filtered;
   }
 
   Widget _buildListView() {
-    return Column(
-      children: [
-        // Enhanced Results Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _buildPropertyQuery().snapshots(),
-            builder: (context, snapshot) {
-              final count = snapshot.hasData ? snapshot.data!.docs.length : 0;
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$count Properties Found',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (_hasActiveFilters())
-                        Text(
-                          'Filtered results',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      // Sort Button
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.sort_rounded, size: 20),
-                          onPressed: _showSortOptions,
-                          tooltip: 'Sort',
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Clear Filters Button
-                      if (_hasActiveFilters())
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _selectedType = 'All';
-                              _selectedStatus = 'All';
-                              _minBedrooms = 0;
-                              _minBathrooms = 0;
-                              _priceRange = const RangeValues(0, 15000);
-                            });
-                          },
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          label: const Text('Clear'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
+    return StreamBuilder<QuerySnapshot>(
+      stream: _buildPropertyQuery().snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingState();
+        }
+        if (!snapshot.hasData) {
+          return _buildEmptyState();
+        }
+
+        final docs = snapshot.data!.docs;
+        final properties =
+            docs.map((doc) {
+              print('Document ID: ${doc.id}'); // Debug print
+              return PropertyModel.fromFirestore(
+                doc.id,
+                doc.data() as Map<String, dynamic>,
               );
-            },
-          ),
-        ),
+            }).toList();
 
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: _buildPropertyQuery().snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildLoadingState();
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return _buildEmptyState();
-              }
-              final docs = snapshot.data!.docs;
-              final properties =
-                  docs
-                      .map(
-                        (doc) => PropertyModel.fromFirestore(
-                          doc.id,
-                          doc.data() as Map<String, dynamic>,
-                        ),
-                      )
-                      .toList();
+        final filteredProperties = _filterProperties(properties);
 
-              return RefreshIndicator(
-                onRefresh: () async {
-                  // Refresh data
-                  await Future.delayed(const Duration(milliseconds: 500));
-                },
-                color: AppColors.primary,
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(top: 8, bottom: 24),
-                  itemCount: properties.length,
-                  itemBuilder: (context, index) {
-                    final property = properties[index];
-                    return AnimatedContainer(
-                      duration: Duration(milliseconds: 300 + (index * 50)),
-                      curve: Curves.easeOutBack,
-                      child: _buildPropertyCard(property),
-                    );
-                  },
+        if (filteredProperties.isEmpty) {
+          return _buildNoResultsState();
+        }
+
+        return CustomScrollView(
+          slivers: [
+            // Results header
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${filteredProperties.length} Properties Found',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (_hasActiveFilters() || _searchQuery.isNotEmpty)
+                          Text(
+                            _searchQuery.isNotEmpty
+                                ? 'Search: "$_searchQuery"'
+                                : 'Filtered results',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.sort_rounded),
+                      onPressed: _showSortBottomSheet,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Properties list
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final property = filteredProperties[index];
+                return AnimatedContainer(
+                  duration: Duration(milliseconds: 300 + (index * 50)),
+                  curve: Curves.easeOutBack,
+                  child: _buildPropertyCard(property),
+                );
+              }, childCount: filteredProperties.length),
+            ),
+
+            // Bottom padding
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        );
+      },
     );
   }
 
@@ -642,7 +633,76 @@ class _SearchPageState extends State<SearchPage>
     );
   }
 
-  void _showSortOptions() {
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Icon(
+                Icons.search_off_rounded,
+                size: 48,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No Properties Found',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'Try adjusting your search terms or filters'
+                  : 'Try adjusting your filters',
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _searchQuery = '';
+                  _selectedType = 'All';
+                  _selectedStatus = 'All';
+                  _minBedrooms = 0;
+                  _minBathrooms = 0;
+                  _priceRange = const RangeValues(0, 15000);
+                });
+              },
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Clear All Filters'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSortBottomSheet() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -660,9 +720,9 @@ class _SearchPageState extends State<SearchPage>
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
+              _buildSortOption('Recently Added', Icons.access_time),
               _buildSortOption('Price: Low to High', Icons.arrow_upward),
               _buildSortOption('Price: High to Low', Icons.arrow_downward),
-              _buildSortOption('Newest First', Icons.access_time),
               _buildSortOption('Most Popular', Icons.trending_up),
               _buildSortOption('Bedrooms', Icons.bed),
               _buildSortOption('Area Size', Icons.square_foot),
@@ -674,25 +734,35 @@ class _SearchPageState extends State<SearchPage>
   }
 
   Widget _buildSortOption(String title, IconData icon) {
+    final isSelected = _sortBy == title;
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.1),
+          color:
+              isSelected
+                  ? AppColors.primary.withOpacity(0.2)
+                  : AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
-      title: Text(title),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+        ),
+      ),
+      trailing:
+          isSelected
+              ? Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+              : null,
       onTap: () {
+        setState(() {
+          _sortBy = title;
+        });
         Navigator.pop(context);
-        // Handle sort logic here
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sorted by $title'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
       },
     );
   }
@@ -708,8 +778,8 @@ class _SearchPageState extends State<SearchPage>
             onTap: () {
               Navigator.pushNamed(
                 context,
-                '/propertyDetail',
-                arguments: property.id,
+                AppRoutes.propertyDetail,
+                arguments: property.id, // Use property.id directly
               );
             },
             borderRadius: BorderRadius.circular(20),
@@ -1110,7 +1180,7 @@ class _SearchPageState extends State<SearchPage>
                                 onPressed: () {
                                   Navigator.pushNamed(
                                     context,
-                                    '/propertyDetail',
+                                    AppRoutes.propertyDetail,
                                     arguments: property.id,
                                   );
                                 },
@@ -1324,14 +1394,13 @@ class _SearchPageState extends State<SearchPage>
         }
         final docs = snapshot.data!.docs;
         final properties =
-            docs
-                .map(
-                  (doc) => PropertyModel.fromFirestore(
-                    doc.id,
-                    doc.data() as Map<String, dynamic>,
-                  ),
-                )
-                .toList();
+            docs.map((doc) {
+              print('Document ID: ${doc.id}'); // Debug print
+              return PropertyModel.fromFirestore(
+                doc.id,
+                doc.data() as Map<String, dynamic>,
+              );
+            }).toList();
 
         return Stack(
           children: [
@@ -1664,8 +1733,8 @@ class _SearchPageState extends State<SearchPage>
         onTap: () {
           Navigator.pushNamed(
             context,
-            '/propertyDetail',
-            arguments: property.id,
+            AppRoutes.propertyDetail,
+            arguments: property.id, // Use property.id directly
           );
         },
         child: Container(
@@ -1711,8 +1780,8 @@ class _SearchPageState extends State<SearchPage>
         onTap: () {
           Navigator.pushNamed(
             context,
-            '/propertyDetail',
-            arguments: property.id,
+            AppRoutes.propertyDetail,
+            arguments: property.id, // Use property.id directly
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -2011,13 +2080,12 @@ class _SearchPageState extends State<SearchPage>
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  const Divider(),
+                  const SizedBox(height: 20),
+
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(
@@ -2031,30 +2099,68 @@ class _SearchPageState extends State<SearchPage>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
-                            runSpacing: 8,
                             children:
-                                AppConstants.propertyTypes.map((type) {
-                                  final isSelected = _selectedType == type;
+                                [
+                                  'All',
+                                  'House',
+                                  'Apartment',
+                                  'Condo',
+                                  'Villa',
+                                ].map((type) {
                                   return ChoiceChip(
                                     label: Text(type),
-                                    selected: isSelected,
+                                    selected: _selectedType == type,
                                     onSelected: (selected) {
                                       setModalState(() {
-                                        _selectedType = selected ? type : 'All';
+                                        _selectedType = type;
                                       });
-                                      setState(() {});
                                     },
-                                    backgroundColor: Colors.white,
                                     selectedColor: AppColors.primary
-                                        .withOpacity(0.1),
+                                        .withOpacity(0.2),
                                     labelStyle: TextStyle(
                                       color:
-                                          isSelected
+                                          _selectedType == type
                                               ? AppColors.primary
-                                              : AppColors.textSecondary,
+                                              : Colors.grey[600],
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Status
+                          const Text(
+                            'Status',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children:
+                                ['All', 'For Rent', 'For Sale', 'Sold'].map((
+                                  status,
+                                ) {
+                                  return ChoiceChip(
+                                    label: Text(status),
+                                    selected: _selectedStatus == status,
+                                    onSelected: (selected) {
+                                      setModalState(() {
+                                        _selectedStatus = status;
+                                      });
+                                    },
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.2),
+                                    labelStyle: TextStyle(
+                                      color:
+                                          _selectedStatus == status
+                                              ? AppColors.primary
+                                              : Colors.grey[600],
                                     ),
                                   );
                                 }).toList(),
@@ -2063,153 +2169,103 @@ class _SearchPageState extends State<SearchPage>
 
                           // Price Range
                           const Text(
-                            'Price Range (per night)',
+                            'Price Range',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           RangeSlider(
-                            values: RangeValues(
-                              _priceRange.start / 30,
-                              _priceRange.end / 30,
-                            ),
+                            values: _priceRange,
                             min: 0,
-                            max: 500,
-                            divisions: 50,
+                            max: 15000,
+                            divisions: 100,
                             labels: RangeLabels(
                               '€${(_priceRange.start / 30).round()}',
                               '€${(_priceRange.end / 30).round()}',
                             ),
                             onChanged: (values) {
                               setModalState(() {
-                                _priceRange = RangeValues(
-                                  values.start * 30,
-                                  values.end * 30,
-                                );
+                                _priceRange = values;
                               });
-                              setState(() {});
                             },
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('€${(_priceRange.start / 30).round()}'),
-                              Text('€${(_priceRange.end / 30).round()}'),
-                            ],
+                            activeColor: AppColors.primary,
                           ),
                           const SizedBox(height: 20),
 
                           // Bedrooms
                           const Text(
-                            'Bedrooms',
+                            'Minimum Bedrooms',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: List.generate(5, (index) {
-                              return Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: ChoiceChip(
-                                    label: Text('${index + 1}'),
-                                    selected: _minBedrooms == index + 1,
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children:
+                                [0, 1, 2, 3, 4, 5].map((beds) {
+                                  return ChoiceChip(
+                                    label: Text(beds == 0 ? 'Any' : '$beds+'),
+                                    selected: _minBedrooms == beds,
                                     onSelected: (selected) {
                                       setModalState(() {
-                                        _minBedrooms = selected ? index + 1 : 0;
+                                        _minBedrooms = beds;
                                       });
-                                      setState(() {});
                                     },
-                                    backgroundColor: Colors.white,
                                     selectedColor: AppColors.primary
-                                        .withOpacity(0.1),
+                                        .withOpacity(0.2),
                                     labelStyle: TextStyle(
                                       color:
-                                          _minBedrooms == index + 1
+                                          _minBedrooms == beds
                                               ? AppColors.primary
-                                              : AppColors.textSecondary,
+                                              : Colors.grey[600],
                                     ),
-                                  ),
-                                ),
-                              );
-                            }),
+                                  );
+                                }).toList(),
                           ),
                           const SizedBox(height: 20),
 
                           // Bathrooms
                           const Text(
-                            'Bathrooms',
+                            'Minimum Bathrooms',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: List.generate(3, (index) {
-                              return Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                  ),
-                                  child: ChoiceChip(
-                                    label: Text('${index + 1}'),
-                                    selected: _minBathrooms == index + 1,
-                                    onSelected: (selected) {
-                                      setModalState(() {
-                                        _minBathrooms =
-                                            selected ? index + 1 : 0;
-                                      });
-                                      setState(() {});
-                                    },
-                                    backgroundColor: Colors.white,
-                                    selectedColor: AppColors.primary
-                                        .withOpacity(0.1),
-                                    labelStyle: TextStyle(
-                                      color:
-                                          _minBathrooms == index + 1
-                                              ? AppColors.primary
-                                              : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Amenities
-                          const Text(
-                            'Amenities',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _buildAmenityChip('WiFi', true),
-                              _buildAmenityChip('Kitchen', false),
-                              _buildAmenityChip('Parking', false),
-                              _buildAmenityChip('Pool', false),
-                              _buildAmenityChip('Air Conditioning', true),
-                              _buildAmenityChip('Heating', false),
-                            ],
+                            children:
+                                [0, 1, 2, 3, 4].map((baths) {
+                                  return ChoiceChip(
+                                    label: Text(baths == 0 ? 'Any' : '$baths+'),
+                                    selected: _minBathrooms == baths,
+                                    onSelected: (selected) {
+                                      setModalState(() {
+                                        _minBathrooms = baths;
+                                      });
+                                    },
+                                    selectedColor: AppColors.primary
+                                        .withOpacity(0.2),
+                                    labelStyle: TextStyle(
+                                      color:
+                                          _minBathrooms == baths
+                                              ? AppColors.primary
+                                              : Colors.grey[600],
+                                    ),
+                                  );
+                                }).toList(),
                           ),
-                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
@@ -2250,28 +2306,12 @@ class _SearchPageState extends State<SearchPage>
     );
   }
 
-  Widget _buildAmenityChip(String label, bool isSelected) {
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        // Handle amenity selection
-      },
-      backgroundColor: Colors.white,
-      selectedColor: AppColors.primary.withOpacity(0.1),
-      labelStyle: TextStyle(
-        color: isSelected ? AppColors.primary : AppColors.textSecondary,
-      ),
-      checkmarkColor: AppColors.primary,
-    );
-  }
-
   void _clearFilters() {
     setState(() {
       _searchController.clear();
       _selectedType = 'All';
       _selectedStatus = 'All';
-      _priceRange = const RangeValues(0, 1000000);
+      _priceRange = const RangeValues(0, 15000);
       _minBedrooms = 0;
       _minBathrooms = 0;
     });
@@ -2282,7 +2322,6 @@ class _SearchPageState extends State<SearchPage>
       _isLoading = true;
     });
 
-    // Simulate API call with delay
     Future.delayed(const Duration(seconds: 1), () {
       setState(() {
         _isLoading = false;
@@ -2291,7 +2330,7 @@ class _SearchPageState extends State<SearchPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Filters applied!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: Colors.green,
         ),
       );
     });
@@ -2299,8 +2338,36 @@ class _SearchPageState extends State<SearchPage>
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _tabController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
+  }
+}
+
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+
+  _TabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: Colors.white, child: tabBar);
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return false;
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/models/property_model.dart';
+import '../../../../core/models/user_profile.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/presentation/pages/login_page.dart';
@@ -515,128 +516,93 @@ class _FavoritesPageState extends State<FavoritesPage>
   }
 
   Widget _buildAdvancedEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary.withOpacity(0.1),
-                    AppColors.primary.withOpacity(0.05),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 40),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primary.withOpacity(0.1),
+                  AppColors.primary.withOpacity(0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(60),
+            ),
+            child: Icon(
+              Icons.favorite_border_rounded,
+              size: 60,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'No Favorites Yet',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Start exploring properties and save your favorites to view them here.',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Pro Tip',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(80),
-              ),
-              child: Icon(
-                Icons.favorite_border_rounded,
-                size: 80,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'No Favorites Yet',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Start exploring amazing properties and save your favorites by tapping the heart icon.',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            Column(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/');
-                  },
-                  icon: const Icon(Icons.search_rounded),
-                  label: const Text('Browse Properties'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
+                const SizedBox(height: 8),
+                Text(
+                  'Save properties to compare prices and features easily!',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.3,
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/search');
-                  },
-                  icon: const Icon(Icons.tune_rounded),
-                  label: const Text('Advanced Search'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-            const SizedBox(height: 40),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.lightbulb_outline_rounded,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Pro Tip',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Save properties to compare prices, features, and locations easily. Your favorites sync across all devices!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 40),
+        ],
       ),
     );
   }
@@ -721,7 +687,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 2.0,
+          mainAxisExtent: 190, // Ensures enough vertical space for card content
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
@@ -1209,137 +1175,146 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ),
               ],
             ),
-            child: SizedBox(
-              height: 70, // Ultra minimal total height to prevent overflow
-              child: Stack(
-                children: [
-                  // Image Section - Fixed height
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 45,
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                        child: Container(
-                          width: double.infinity,
-                          height: double.infinity,
-                          child:
-                              (property.images.isNotEmpty &&
-                                      property.images[0]
-                                          .toString()
-                                          .trim()
-                                          .isNotEmpty)
-                                  ? Image.network(
-                                    property.images[0],
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return _buildDefaultImage();
-                                    },
-                                  )
-                                  : _buildDefaultImage(),
-                        ),
+            child: Column(
+              children: [
+                // Image Section - Optimized height for better proportions
+                Expanded(
+                  flex: 3, // Takes 60% of available space
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(16),
                       ),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            child:
+                                (property.images.isNotEmpty &&
+                                        property.images[0]
+                                            .toString()
+                                            .trim()
+                                            .isNotEmpty)
+                                    ? Image.network(
+                                      property.images[0],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (
+                                        context,
+                                        error,
+                                        stackTrace,
+                                      ) {
+                                        return _buildDefaultImage();
+                                      },
+                                    )
+                                    : _buildDefaultImage(),
+                          ),
+                        ),
 
-                      // Status Badge
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(property.status),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            property.status.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        // Status Badge
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(property.status),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              property.status.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      // Remove Button
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
+                        // Remove Button
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
-                              onTap: () => _showRemoveDialog(property, userId),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                child: const Icon(
-                                  Icons.favorite_rounded,
-                                  color: Colors.red,
-                                  size: 16,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap:
+                                    () => _showRemoveDialog(property, userId),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  child: const Icon(
+                                    Icons.favorite_rounded,
+                                    color: Colors.red,
+                                    size: 16,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
 
-                // Details Section - Fixed to prevent overflow
+                // Details Section - Fixed height to prevent overflow
                 Container(
-                  height: 35, // Absolute minimal height to eliminate overflow
+                  height: 65, // Fixed height for details section
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
+                    horizontal: 8,
+                    vertical: 6,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       // Title only
                       Text(
                         property.title,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-
                       // Price and Rating in one row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '€${(property.price / 30).round()}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              color: AppColors.primary,
+                          Expanded(
+                            child: Text(
+                              '€${(property.price / 30).round()}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: AppColors.primary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Row(
@@ -1348,36 +1323,43 @@ class _FavoritesPageState extends State<FavoritesPage>
                               const Icon(
                                 Icons.star,
                                 color: Colors.amber,
-                                size: 9,
+                                size: 8,
                               ),
                               const SizedBox(width: 1),
                               Text(
                                 '4.${property.id.hashCode % 10}',
                                 style: const TextStyle(
-                                  fontSize: 8,
+                                  fontSize: 7,
                                   fontWeight: FontWeight.w600,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ],
                       ),
-
                       // Simplified features in one row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _buildCompactFeature(
-                            Icons.bed,
-                            '${property.bedrooms}',
+                          Expanded(
+                            child: _buildCompactFeature(
+                              Icons.bed,
+                              '${property.bedrooms}',
+                            ),
                           ),
-                          _buildCompactFeature(
-                            Icons.bathtub,
-                            '${property.bathrooms}',
+                          Expanded(
+                            child: _buildCompactFeature(
+                              Icons.bathtub,
+                              '${property.bathrooms}',
+                            ),
                           ),
-                          _buildCompactFeature(
-                            Icons.square_foot,
-                            '${property.area.toInt()}m²',
+                          Expanded(
+                            child: _buildCompactFeature(
+                              Icons.square_foot,
+                              '${property.area.toInt()}m²',
+                            ),
                           ),
                         ],
                       ),

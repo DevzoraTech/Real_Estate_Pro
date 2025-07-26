@@ -6,11 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Add a simple in-memory user profile holder for demonstration
-class UserProfile {
-  static Map<String, dynamic>? currentUserProfile;
-}
+import '../../../../core/models/user_profile.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
