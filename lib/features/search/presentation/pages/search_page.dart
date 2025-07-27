@@ -2426,9 +2426,9 @@ class _SearchPageState extends State<SearchPage>
 }
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
+  final TabBar tabBar;
 
-  _TabBarDelegate(this.child);
+  _TabBarDelegate(this.tabBar);
 
   @override
   Widget build(
@@ -2436,17 +2436,17 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return child;
+    return Container(color: Colors.white, child: tabBar);
   }
 
   @override
-  double get maxExtent => 60;
+  double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  double get minExtent => 60;
+  double get minExtent => tabBar.preferredSize.height;
 
   @override
-  bool shouldRebuild(SliverPersistentHeaderDelegate oldDelegate) {
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
     return false;
   }
 }
