@@ -10,6 +10,8 @@ import '../../features/properties/domain/usecases/get_featured_properties.dart';
 import '../../features/properties/domain/usecases/search_properties.dart';
 import '../../features/properties/presentation/bloc/property_bloc.dart';
 import '../../features/properties/presentation/bloc/featured_property_bloc.dart';
+import '../../features/chat/data/services/chat_service.dart';
+import '../../features/chat/data/services/notification_service.dart';
 
 final sl = GetIt.instance;
 
@@ -49,4 +51,13 @@ Future<void> init() async {
   //! Core
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
+
+  //! Services
+  // Initialize ChatService and NotificationService
+  final chatService = ChatService();
+  await chatService.initialize();
+  sl.registerLazySingleton<ChatService>(() => chatService);
+  
+  // NotificationService is a singleton managed by ChatService
+  sl.registerLazySingleton<NotificationService>(() => chatService.notificationService);
 }

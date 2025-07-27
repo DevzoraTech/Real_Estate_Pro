@@ -44,7 +44,10 @@ class AppConstants {
   static const List<String> allowedImageTypes = ['jpg', 'jpeg', 'png', 'webp'];
 
   // Map
-  static const double defaultLatitude = 37.7749;
+  static const double fallbackLatitude = 37.7749; // San Francisco fallback
+  static const double fallbackLongitude = -122.4194;
+  static const double defaultLatitude = 37.7749; // San Francisco default
   static const double defaultLongitude = -122.4194;
   static const double defaultZoom = 12.0;
+  static const double nearbySearchRadius = 50.0; // kilometers
 }

@@ -9,6 +9,8 @@ import '../../features/properties/presentation/pages/add_property_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/favorites/presentation/pages/favorites_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
+import '../../features/chat/presentation/chat_list_page.dart';
+import '../../features/chat/presentation/improved_chat_page.dart';
 import '../../features/properties/domain/entities/property.dart';
 
 class AppRoutes {
@@ -22,6 +24,8 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String favorites = '/favorites';
   static const String search = '/search';
+  static const String chatList = '/chat-list';
+  static const String chat = '/chat';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -61,6 +65,24 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const FavoritesPage());
       case search:
         return MaterialPageRoute(builder: (_) => const SearchPage());
+      case chatList:
+        return MaterialPageRoute(builder: (_) => const ChatListPage());
+      case chat:
+        final args = settings.arguments;
+        if (args is Map<String, dynamic>) {
+          final agentId = args['agentId'] as String?;
+          final agentName = args['agentName'] as String?;
+          if (agentId != null && agentName != null) {
+            return MaterialPageRoute(
+              builder: (_) => ImprovedChatPage(agentId: agentId, agentName: agentName),
+            );
+          }
+        }
+        return MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Invalid chat arguments')),
+          ),
+        );
       default:
         return MaterialPageRoute(
           builder:

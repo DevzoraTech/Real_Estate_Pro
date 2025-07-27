@@ -3073,12 +3073,13 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
   void _messageAgent() {
     final agent = _agentUser;
     if (agent == null) return;
-    Navigator.push(
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder:
-            (context) => ChatPage(agentId: agent.id, agentName: agent.fullName),
-      ),
+      AppRoutes.chat,
+      arguments: {
+        'agentId': agent.id,
+        'agentName': agent.fullName,
+      },
     );
   }
 

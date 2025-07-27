@@ -8,6 +8,7 @@ import '../../../../core/models/user_profile.dart';
 import '../../../properties/presentation/pages/property_list_page.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
+import '../../../chat/presentation/chat_list_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -64,6 +65,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     const PropertyListPage(),
     const SearchPage(),
     const FavoritesPage(),
+    const ChatListPage(),
     const ProfilePage(),
   ];
 
@@ -71,6 +73,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     NavItem(Icons.home, Icons.home_outlined, 'Home'),
     NavItem(Icons.search, Icons.search_outlined, 'Search'),
     NavItem(Icons.favorite, Icons.favorite_border, 'Favorites'),
+    NavItem(Icons.chat, Icons.chat_outlined, 'Chat'),
     NavItem(Icons.person, Icons.person_outline, 'Profile'),
   ];
 
@@ -166,7 +169,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             action: 'price_alerts',
           ),
         ];
-      case 3: // Profile page
+      case 3: // Chat page
+        return [
+          FabMenuItem(
+            icon: Icons.chat_bubble_outline,
+            label: 'New Chat',
+            color: Colors.blue,
+            action: 'new_chat',
+          ),
+          FabMenuItem(
+            icon: Icons.search,
+            label: 'Search Chats',
+            color: Colors.green,
+            action: 'search_chats',
+          ),
+          FabMenuItem(
+            icon: Icons.archive,
+            label: 'Archive',
+            color: Colors.orange,
+            action: 'archive_chats',
+          ),
+        ];
+      case 4: // Profile page
         return [
           FabMenuItem(
             icon: Icons.settings,

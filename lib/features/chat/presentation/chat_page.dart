@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/theme/app_colors.dart';
+import '../data/services/chat_service.dart';
+import '../domain/entities/message.dart';
 
 class ChatPage extends StatefulWidget {
   final String agentId;
@@ -13,16 +16,46 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final ChatService _chatService = ChatService();
+  String _currentUserId = '';
+  String _chatId = '';
   bool _sending = false;
-  late String _currentUserId;
-  late String _currentUserName;
+  bool _isTyping = false;
 
   @override
   void initState() {
     super.initState();
     final user = FirebaseAuth.instance.currentUser;
-    _currentUserId = user?.uid ?? '';
-    _currentUserName = user?.displayName ?? user?.email ?? 'You';
+    if (user != null) {
+      _currentUserId = user.uid;
+      _chatId = _chatService.generateChatId(_currentUserId, widget.agentId);
+      _createChatIfNeeded();
+      _markMessagesAsRead();
+    }
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createChatIfNeeded() async {
+    try {
+      await _chatService.createOrGetChat(widget.agentId, widget.agentName);
+    } catch (e) {
+      print('Error creating chat: $e');
+    }
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    try {
+      await _chatService.markMessagesAsRead(_chatId, widget.agentId);
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
   }
 
   @override
@@ -193,11 +226,5 @@ class _ChatPageState extends State<ChatPage> {
         _sending = false;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
   }
 }

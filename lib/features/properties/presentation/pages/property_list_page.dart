@@ -15,6 +15,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../../core/models/user_profile.dart';
+import '../../../../core/services/location_service.dart';
+import '../../../../core/widgets/location_header.dart';
+import '../../../../core/constants/app_constants.dart';
 import 'dart:async';
 
 const List<Map<String, String>> supportedCurrencies = [
@@ -45,6 +48,12 @@ class _PropertyListPageState extends State<PropertyListPage> {
   DateTime? _lastRatesFetch;
   PropertyCardViewStyle _featuredViewStyle = PropertyCardViewStyle.compact;
   bool _isLoading = false;
+
+  // Location variables
+  double? _currentLatitude;
+  double? _currentLongitude;
+  List<Property> _nearbyProperties = [];
+  bool _isLoadingLocation = false;
 
   // Advanced filter variables
   RangeValues _priceRange = const RangeValues(0, 1000000);
@@ -110,6 +119,7 @@ class _PropertyListPageState extends State<PropertyListPage> {
       });
     });
     _fetchExchangeRates();
+    _loadCurrentLocation();
   }
 
   // Update _fetchExchangeRates to use ExchangeRate-API with UGX as the base and the provided API key.
@@ -141,6 +151,157 @@ class _PropertyListPageState extends State<PropertyListPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // Load current location and find nearby properties
+  Future<void> _loadCurrentLocation() async {
+    if (_isLoadingLocation) return;
+
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      final position = await LocationService.instance.getCurrentPosition();
+      if (position != null && mounted) {
+        setState(() {
+          _currentLatitude = position.latitude;
+          _currentLongitude = position.longitude;
+        });
+        await _loadNearbyProperties();
+      }
+    } catch (e) {
+      print('Error loading location: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingLocation = false;
+        });
+      }
+    }
+  }
+
+  // Load properties near current location
+  Future<void> _loadNearbyProperties() async {
+    if (_currentLatitude == null || _currentLongitude == null) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('properties')
+          .get();
+
+      final List<Property> nearby = [];
+      for (final doc in snapshot.docs) {
+        final property = _createPropertyFromDoc(doc);
+        final distance = LocationService.instance.getDistanceBetween(
+          _currentLatitude!,
+          _currentLongitude!,
+          property.latitude,
+          property.longitude,
+        );
+
+        if (distance <= AppConstants.nearbySearchRadius) {
+          nearby.add(property);
+        }
+      }
+
+      // Sort by distance
+      nearby.sort((a, b) {
+        final distanceA = LocationService.instance.getDistanceBetween(
+          _currentLatitude!,
+          _currentLongitude!,
+          a.latitude,
+          a.longitude,
+        );
+        final distanceB = LocationService.instance.getDistanceBetween(
+          _currentLatitude!,
+          _currentLongitude!,
+          b.latitude,
+          b.longitude,
+        );
+        return distanceA.compareTo(distanceB);
+      });
+
+      if (mounted) {
+        setState(() {
+          _nearbyProperties = nearby;
+        });
+      }
+    } catch (e) {
+      print('Error loading nearby properties: $e');
+    }
+  }
+
+  // Helper method to create Property from Firestore document
+  Property _createPropertyFromDoc(QueryDocumentSnapshot doc) {
+    try {
+      final data = doc.data() as Map<String, dynamic>;
+      return Property(
+        id: doc.id,
+        title: data['title'] ?? '',
+        description: data['description'] ?? '',
+        type: data['type'] ?? '',
+        status: data['status'] ?? '',
+        price: (data['price'] as num?)?.toDouble() ?? 0.0,
+        area: (data['area'] as num?)?.toDouble() ?? 0.0,
+        bedrooms: (data['bedrooms'] as num?)?.toInt() ?? 0,
+        bathrooms: (data['bathrooms'] as num?)?.toInt() ?? 0,
+        address: data['address'] ?? '',
+        city: data['city'] ?? '',
+        state: data['state'] ?? '',
+        zipCode: data['zipCode'] ?? '',
+        latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
+        longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
+        images: (data['images'] is List)
+            ? (data['images'] as List).cast<String>()
+            : <String>[],
+        amenities: (data['amenities'] is List)
+            ? (data['amenities'] as List).cast<String>()
+            : <String>[],
+        ownerId: data['ownerId'] ?? '',
+        isFeatured: data['isFeatured'] ?? false,
+        createdAt: (data['createdAt'] is Timestamp)
+            ? (data['createdAt'] as Timestamp).toDate()
+            : DateTime.now(),
+        updatedAt: (data['updatedAt'] is Timestamp)
+            ? (data['updatedAt'] as Timestamp).toDate()
+            : DateTime.now(),
+        rating: (data['rating'] as num?)?.toDouble(),
+        reviewsCount: (data['reviews_count'] is int)
+            ? data['reviews_count'] as int
+            : (data['reviews_count'] is num)
+                ? (data['reviews_count'] as num).toInt()
+                : null,
+      );
+    } catch (e) {
+      print('Error creating property from doc ${doc.id}: $e');
+      // Return a default property to prevent crashes
+      return Property(
+        id: doc.id,
+        title: 'Property ${doc.id}',
+        description: '',
+        type: 'House',
+        status: 'for_sale',
+        price: 0.0,
+        area: 0.0,
+        bedrooms: 0,
+        bathrooms: 0,
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        latitude: 0.0,
+        longitude: 0.0,
+        images: <String>[],
+        amenities: <String>[],
+        ownerId: '',
+        isFeatured: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        rating: null,
+        reviewsCount: null,
+      );
     }
   }
 
@@ -401,9 +562,11 @@ class _PropertyListPageState extends State<PropertyListPage> {
             slivers: [
               _buildHeader(),
               const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              _buildLocationHeader(),
               _buildSearchBar(),
               _buildPropertyTypeFilters(),
               _buildSearchResultsSection(),
+              _buildNearbyPropertiesSection(),
               _buildFeaturedSection(),
               _buildRecentlyAddedSection(),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -729,6 +892,69 @@ class _PropertyListPageState extends State<PropertyListPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLocationHeader() {
+    return SliverToBoxAdapter(
+      child: LocationHeader(
+        currentLatitude: _currentLatitude,
+        currentLongitude: _currentLongitude,
+        isLoading: _isLoadingLocation,
+        onRefresh: _loadCurrentLocation,
+        onTap: () {
+          // Navigate to map view or location settings
+          print('Location header tapped');
+        },
+      ),
+    );
+  }
+
+  Widget _buildNearbyPropertiesSection() {
+    if (_nearbyProperties.isEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          NearbyPropertiesHeader(
+            count: _nearbyProperties.length,
+            onViewAll: () {
+              // Navigate to nearby properties page
+              print('View all nearby properties');
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 280,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _nearbyProperties.length,
+              itemBuilder: (context, index) {
+                final property = _nearbyProperties[index];
+                return Container(
+                  width: 280,
+                  margin: const EdgeInsets.only(right: 16),
+                  child: CompactPropertyCard(
+                    property: property,
+                    onTap: () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.propertyDetail,
+                      arguments: property,
+                    ),
+                    exchangeRates: _exchangeRates,
+                    selectedCurrency: _selectedCurrency,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
@@ -1490,84 +1716,6 @@ class _PropertyListPageState extends State<PropertyListPage> {
         ),
       ),
     );
-  }
-
-  Property _createPropertyFromDoc(QueryDocumentSnapshot doc) {
-    try {
-      final data = doc.data() as Map<String, dynamic>?;
-      if (data == null) {
-        throw Exception('Document data is null');
-      }
-
-      return Property(
-        id: doc.id,
-        title: data['title'] ?? '',
-        description: data['description'] ?? '',
-        type: data['type'] ?? '',
-        status: data['status'] ?? '',
-        price: (data['price'] as num?)?.toDouble() ?? 0.0,
-        area: (data['area'] as num?)?.toDouble() ?? 0.0,
-        bedrooms: (data['bedrooms'] as num?)?.toInt() ?? 0,
-        bathrooms: (data['bathrooms'] as num?)?.toInt() ?? 0,
-        address: data['address'] ?? '',
-        city: data['city'] ?? '',
-        state: data['state'] ?? '',
-        zipCode: data['zipCode'] ?? '',
-        latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
-        longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
-        images:
-            (data['images'] is List)
-                ? (data['images'] as List).cast<String>()
-                : <String>[],
-        amenities:
-            (data['amenities'] is List)
-                ? (data['amenities'] as List).cast<String>()
-                : <String>[],
-        ownerId: data['ownerId'] ?? '',
-        isFeatured: data['isFeatured'] ?? false,
-        createdAt:
-            (data['createdAt'] is Timestamp)
-                ? (data['createdAt'] as Timestamp).toDate()
-                : DateTime.now(),
-        updatedAt:
-            (data['updatedAt'] is Timestamp)
-                ? (data['updatedAt'] as Timestamp).toDate()
-                : DateTime.now(),
-        rating: (data['rating'] as num?)?.toDouble(),
-        reviewsCount:
-            (data['reviews_count'] is int)
-                ? data['reviews_count'] as int
-                : (data['reviews_count'] is num)
-                ? (data['reviews_count'] as num).toInt()
-                : null,
-      );
-    } catch (e) {
-      print('Error creating property from doc ${doc.id}: $e');
-      // Return a default property to prevent crashes
-      return Property(
-        id: doc.id,
-        title: 'Property ${doc.id}',
-        description: '',
-        type: 'House',
-        status: 'for_sale',
-        price: 0.0,
-        area: 0.0,
-        bedrooms: 0,
-        bathrooms: 0,
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        latitude: 0.0,
-        longitude: 0.0,
-        images: [],
-        amenities: [],
-        ownerId: '',
-        isFeatured: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-    }
   }
 
   void _showFilterBottomSheet() {
