@@ -187,9 +187,8 @@ class _PropertyListPageState extends State<PropertyListPage> {
     if (_currentLatitude == null || _currentLongitude == null) return;
 
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('properties')
-          .get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('properties').get();
 
       final List<Property> nearby = [];
       for (final doc in snapshot.docs) {
@@ -253,24 +252,29 @@ class _PropertyListPageState extends State<PropertyListPage> {
         zipCode: data['zipCode'] ?? '',
         latitude: (data['latitude'] as num?)?.toDouble() ?? 0.0,
         longitude: (data['longitude'] as num?)?.toDouble() ?? 0.0,
-        images: (data['images'] is List)
-            ? (data['images'] as List).cast<String>()
-            : <String>[],
-        amenities: (data['amenities'] is List)
-            ? (data['amenities'] as List).cast<String>()
-            : <String>[],
+        images:
+            (data['images'] is List)
+                ? (data['images'] as List).cast<String>()
+                : <String>[],
+        amenities:
+            (data['amenities'] is List)
+                ? (data['amenities'] as List).cast<String>()
+                : <String>[],
         ownerId: data['ownerId'] ?? '',
         isFeatured: data['isFeatured'] ?? false,
-        createdAt: (data['createdAt'] is Timestamp)
-            ? (data['createdAt'] as Timestamp).toDate()
-            : DateTime.now(),
-        updatedAt: (data['updatedAt'] is Timestamp)
-            ? (data['updatedAt'] as Timestamp).toDate()
-            : DateTime.now(),
+        createdAt:
+            (data['createdAt'] is Timestamp)
+                ? (data['createdAt'] as Timestamp).toDate()
+                : DateTime.now(),
+        updatedAt:
+            (data['updatedAt'] is Timestamp)
+                ? (data['updatedAt'] as Timestamp).toDate()
+                : DateTime.now(),
         rating: (data['rating'] as num?)?.toDouble(),
-        reviewsCount: (data['reviews_count'] is int)
-            ? data['reviews_count'] as int
-            : (data['reviews_count'] is num)
+        reviewsCount:
+            (data['reviews_count'] is int)
+                ? data['reviews_count'] as int
+                : (data['reviews_count'] is num)
                 ? (data['reviews_count'] as num).toInt()
                 : null,
       );
@@ -600,7 +604,7 @@ class _PropertyListPageState extends State<PropertyListPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Your Location',
+                          'More Than a Place To Call Home',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 13,
@@ -641,7 +645,7 @@ class _PropertyListPageState extends State<PropertyListPage> {
                               ),
                               const SizedBox(width: 8),
                               const Text(
-                                'San Francisco, CA',
+                                'UpSpace ',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -718,41 +722,18 @@ class _PropertyListPageState extends State<PropertyListPage> {
                           ),
                         ),
                       ),
+
                       const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                      IconButton(
+                        icon: Icon(
+                          Icons.favorite_border,
+                          color: AppColors.primary,
+                          size: 24,
                         ),
-                        child: Stack(
-                          children: [
-                            const Icon(
-                              Icons.notifications_outlined,
-                              size: 24,
-                              color: AppColors.textPrimary,
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.accent,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        tooltip: 'Favorites',
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/favorites');
+                        },
                       ),
                     ],
                   ),
@@ -941,11 +922,12 @@ class _PropertyListPageState extends State<PropertyListPage> {
                   margin: const EdgeInsets.only(right: 16),
                   child: CompactPropertyCard(
                     property: property,
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.propertyDetail,
-                      arguments: property,
-                    ),
+                    onTap:
+                        () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.propertyDetail,
+                          arguments: property,
+                        ),
                     exchangeRates: _exchangeRates,
                     selectedCurrency: _selectedCurrency,
                   ),

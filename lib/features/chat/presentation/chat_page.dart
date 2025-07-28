@@ -44,7 +44,11 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> _createChatIfNeeded() async {
     try {
-      await _chatService.createOrGetChat(widget.agentId, widget.agentName);
+      await _chatService.createOrGetChat(
+        widget.agentId,
+        widget.agentName,
+        userName: FirebaseAuth.instance.currentUser?.displayName ?? 'User',
+      );
     } catch (e) {
       print('Error creating chat: $e');
     }

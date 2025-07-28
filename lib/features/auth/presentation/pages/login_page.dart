@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/user_profile.dart';
+import '../../../chat/data/services/notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -137,19 +138,35 @@ class _LoginPageState extends State<LoginPage> {
             );
         final user = userCredential.user;
         if (user != null) {
+          // Save FCM token for notifications
+          final notificationService = NotificationService();
+          final fcmToken = await notificationService.getFcmToken();
+          if (fcmToken != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .update({'fcmToken': fcmToken});
+          }
+
           // Always fetch the latest profile from Firestore
-          final userDoc =
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .get();
-          if (!userDoc.exists) {
+          final userDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid);
+          final userDocSnap = await userDocRef.get();
+          if (!userDocSnap.exists ||
+              !userDocSnap.data()!.containsKey('isOnline')) {
+            await userDocRef.set({
+              'isOnline': false,
+              'lastSeen': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          }
+          if (!userDocSnap.exists) {
             throw FirebaseAuthException(
               message: 'User profile not found. Please register again.',
               code: 'profile-not-found',
             );
           }
-          UserProfile.currentUserProfile = userDoc.data();
+          UserProfile.currentUserProfile = userDocSnap.data();
         }
         if (mounted) {
           Navigator.pushReplacementNamed(context, AppRoutes.home);
@@ -193,12 +210,22 @@ class _LoginPageState extends State<LoginPage> {
       );
       final user = userCredential.user;
       if (user != null) {
-        final userDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .get();
-        if (!userDoc.exists) {
+        // Save FCM token for notifications
+        final notificationService = NotificationService();
+        final fcmToken = await notificationService.getFcmToken();
+
+        final userDocRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid);
+        final userDocSnap = await userDocRef.get();
+        if (!userDocSnap.exists ||
+            !userDocSnap.data()!.containsKey('isOnline')) {
+          await userDocRef.set({
+            'isOnline': false,
+            'lastSeen': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+        if (!userDocSnap.exists) {
           // Prompt for role/profile completion
           String? selectedRole = await _showRoleDialog();
           if (selectedRole == null) {
@@ -217,6 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                 'role': selectedRole,
                 'phone': user.phoneNumber ?? '',
                 'createdAt': FieldValue.serverTimestamp(),
+                'fcmToken': fcmToken,
               });
           final newUserDoc =
               await FirebaseFirestore.instance
@@ -225,7 +253,14 @@ class _LoginPageState extends State<LoginPage> {
                   .get();
           UserProfile.currentUserProfile = newUserDoc.data();
         } else {
-          UserProfile.currentUserProfile = userDoc.data();
+          // Update FCM token for existing user
+          if (fcmToken != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .update({'fcmToken': fcmToken});
+          }
+          UserProfile.currentUserProfile = userDocSnap.data();
         }
       }
       if (mounted) {

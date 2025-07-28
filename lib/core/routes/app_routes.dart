@@ -72,16 +72,33 @@ class AppRoutes {
         if (args is Map<String, dynamic>) {
           final agentId = args['agentId'] as String?;
           final agentName = args['agentName'] as String?;
+          final role = args['role'] as String?;
+          final propertyId = args['propertyId'] as String?;
+          final propertyTitle = args['propertyTitle'] as String?;
+          final propertyPrice = args['propertyPrice'] as double?;
+          final propertyImage = args['propertyImage'] as String?;
+          final propertyAddress = args['propertyAddress'] as String?;
           if (agentId != null && agentName != null) {
             return MaterialPageRoute(
-              builder: (_) => ImprovedChatPage(agentId: agentId, agentName: agentName),
+              builder:
+                  (_) => ImprovedChatPage(
+                    agentId: agentId,
+                    agentName: agentName,
+                    role: role,
+                    propertyId: propertyId,
+                    propertyTitle: propertyTitle,
+                    propertyPrice: propertyPrice,
+                    propertyImage: propertyImage,
+                    propertyAddress: propertyAddress,
+                  ),
             );
           }
         }
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Invalid chat arguments')),
-          ),
+          builder:
+              (_) => const Scaffold(
+                body: Center(child: Text('Invalid chat arguments')),
+              ),
         );
       default:
         return MaterialPageRoute(

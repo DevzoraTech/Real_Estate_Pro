@@ -248,6 +248,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 'phone': _phoneController.text.trim(),
                 'createdAt': FieldValue.serverTimestamp(),
               });
+          final userDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid);
+          await userDocRef.set({
+            'isOnline': false,
+            'lastSeen': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
           // Fetch and store profile
           final userDoc =
               await FirebaseFirestore.instance

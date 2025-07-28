@@ -207,7 +207,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                       child: Column(
                         children: [
                           const Text(
-                            'RealEstate Pro',
+                            'UpSpace ',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -224,7 +224,7 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Find Your Dream Property',
+                            'Smart choices start here',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.white.withOpacity(0.95),

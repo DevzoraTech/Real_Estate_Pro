@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum MessageStatus { sending, sent, delivered, read, failed }
 
-enum MessageType { text, image, file, system }
+enum MessageType { text, image, file, system, voice }
 
 class Message extends Equatable {
   final String id;
@@ -16,6 +16,18 @@ class Message extends Equatable {
   final MessageStatus status;
   final DateTime timestamp;
   final DateTime? readAt;
+  final DateTime? editedAt;
+  final bool isEdited;
+  final String? propertyId;
+  final String? propertyTitle;
+  final double? propertyPrice;
+  final String? propertyImage;
+  final String? propertyAddress;
+  final String? fileUrl;
+  final int? duration; // For voice messages in seconds
+  final String? replyToMessageId;
+  final String? replyToContent;
+  final String? replyToSenderName;
   final Map<String, dynamic>? metadata;
 
   const Message({
@@ -29,18 +41,42 @@ class Message extends Equatable {
     this.status = MessageStatus.sent,
     required this.timestamp,
     this.readAt,
+    this.editedAt,
+    this.isEdited = false,
+    this.propertyId,
+    this.propertyTitle,
+    this.propertyPrice,
+    this.propertyImage,
+    this.propertyAddress,
+    this.fileUrl,
+    this.duration,
+    this.replyToMessageId,
+    this.replyToContent,
+    this.replyToSenderName,
     this.metadata,
   });
 
   factory Message.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final timestampField = data['timestamp'];
+    DateTime? timestamp;
+    if (timestampField is Timestamp) {
+      timestamp = timestampField.toDate();
+    } else if (timestampField is DateTime) {
+      timestamp = timestampField;
+    } else {
+      timestamp = null; // or DateTime(2000,1,1)
+    }
     return Message(
       id: doc.id,
       chatId: data['chatId'] ?? '',
       senderId: data['senderId'] ?? '',
       senderName: data['senderName'] ?? '',
       receiverId: data['receiverId'] ?? '',
-      content: data['message'] ?? data['content'] ?? '', // Support both field names
+      content:
+          data['content'] ??
+          data['message'] ??
+          '', // Prioritize 'content' field
       type: MessageType.values.firstWhere(
         (e) => e.toString().split('.').last == (data['type'] ?? 'text'),
         orElse: () => MessageType.text,
@@ -49,8 +85,20 @@ class Message extends Equatable {
         (e) => e.toString().split('.').last == (data['status'] ?? 'sent'),
         orElse: () => MessageStatus.sent,
       ),
-      timestamp: data['timestamp']?.toDate() ?? DateTime.now(),
+      timestamp: timestamp ?? DateTime(2000, 1, 1), // or skip if null
       readAt: data['readAt']?.toDate(),
+      editedAt: data['editedAt']?.toDate(),
+      isEdited: data['isEdited'] ?? false,
+      propertyId: data['propertyId'],
+      propertyTitle: data['propertyTitle'],
+      propertyPrice: data['propertyPrice']?.toDouble(),
+      propertyImage: data['propertyImage'],
+      propertyAddress: data['propertyAddress'],
+      fileUrl: data['fileUrl'],
+      duration: data['duration']?.toInt(),
+      replyToMessageId: data['replyToMessageId'],
+      replyToContent: data['replyToContent'],
+      replyToSenderName: data['replyToSenderName'],
       metadata: data['metadata'],
     );
   }
@@ -67,6 +115,18 @@ class Message extends Equatable {
       'status': status.toString().split('.').last,
       'timestamp': timestamp,
       'readAt': readAt,
+      'editedAt': editedAt,
+      'isEdited': isEdited,
+      'propertyId': propertyId,
+      'propertyTitle': propertyTitle,
+      'propertyPrice': propertyPrice,
+      'propertyImage': propertyImage,
+      'propertyAddress': propertyAddress,
+      'fileUrl': fileUrl,
+      'duration': duration,
+      'replyToMessageId': replyToMessageId,
+      'replyToContent': replyToContent,
+      'replyToSenderName': replyToSenderName,
       'metadata': metadata,
     };
   }
@@ -82,6 +142,18 @@ class Message extends Equatable {
     MessageStatus? status,
     DateTime? timestamp,
     DateTime? readAt,
+    DateTime? editedAt,
+    bool? isEdited,
+    String? propertyId,
+    String? propertyTitle,
+    double? propertyPrice,
+    String? propertyImage,
+    String? propertyAddress,
+    String? fileUrl,
+    int? duration,
+    String? replyToMessageId,
+    String? replyToContent,
+    String? replyToSenderName,
     Map<String, dynamic>? metadata,
   }) {
     return Message(
@@ -95,6 +167,18 @@ class Message extends Equatable {
       status: status ?? this.status,
       timestamp: timestamp ?? this.timestamp,
       readAt: readAt ?? this.readAt,
+      editedAt: editedAt ?? this.editedAt,
+      isEdited: isEdited ?? this.isEdited,
+      propertyId: propertyId ?? this.propertyId,
+      propertyTitle: propertyTitle ?? this.propertyTitle,
+      propertyPrice: propertyPrice ?? this.propertyPrice,
+      propertyImage: propertyImage ?? this.propertyImage,
+      propertyAddress: propertyAddress ?? this.propertyAddress,
+      fileUrl: fileUrl ?? this.fileUrl,
+      duration: duration ?? this.duration,
+      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      replyToContent: replyToContent ?? this.replyToContent,
+      replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       metadata: metadata ?? this.metadata,
     );
   }
@@ -102,19 +186,32 @@ class Message extends Equatable {
   bool get isRead => readAt != null;
   bool get isSending => status == MessageStatus.sending;
   bool get isFailed => status == MessageStatus.failed;
+  bool get hasProperty => propertyId != null;
 
   @override
   List<Object?> get props => [
-        id,
-        chatId,
-        senderId,
-        senderName,
-        receiverId,
-        content,
-        type,
-        status,
-        timestamp,
-        readAt,
-        metadata,
-      ];
+    id,
+    chatId,
+    senderId,
+    senderName,
+    receiverId,
+    content,
+    type,
+    status,
+    timestamp,
+    readAt,
+    editedAt,
+    isEdited,
+    propertyId,
+    propertyTitle,
+    propertyPrice,
+    propertyImage,
+    propertyAddress,
+    fileUrl,
+    duration,
+    replyToMessageId,
+    replyToContent,
+    replyToSenderName,
+    metadata,
+  ];
 }

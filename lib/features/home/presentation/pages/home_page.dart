@@ -1120,6 +1120,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final isSelected = _currentIndex == index;
     final item = _navItems[index];
 
+    Widget iconWidget = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child: Icon(
+        isSelected ? item.selectedIcon : item.unselectedIcon,
+        key: ValueKey('${index}_$isSelected'),
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+        size: isSelected ? 26 : 24,
+      ),
+    );
+
+    // No badge logic for any tab
+
     return GestureDetector(
       onTap: () => _onTabTapped(index),
       child: AnimatedContainer(
@@ -1146,23 +1158,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 shape: BoxShape.circle,
               ),
             ),
-
             const SizedBox(height: 4),
-
-            // Animated icon
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isSelected ? item.selectedIcon : item.unselectedIcon,
-                key: ValueKey('${index}_$isSelected'),
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                size: isSelected ? 26 : 24,
-              ),
-            ),
-
+            iconWidget,
             const SizedBox(height: 4),
-
-            // Animated label
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(

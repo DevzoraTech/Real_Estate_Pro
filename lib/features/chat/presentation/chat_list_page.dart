@@ -66,7 +66,10 @@ class _ChatListPageState extends State<ChatListPage> {
               if (unreadCount > 0) {
                 return Container(
                   margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(12),
@@ -97,22 +100,26 @@ class _ChatListPageState extends State<ChatListPage> {
               decoration: InputDecoration(
                 hintText: 'Search conversations...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
+                suffixIcon:
+                    _searchQuery.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                        : null,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
@@ -133,16 +140,26 @@ class _ChatListPageState extends State<ChatListPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red[300],
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Error loading chats',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           snapshot.error.toString(),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -151,12 +168,18 @@ class _ChatListPageState extends State<ChatListPage> {
                 }
 
                 final chats = snapshot.data ?? [];
-                final filteredChats = _searchQuery.isEmpty
-                    ? chats
-                    : chats.where((chat) {
-                        return chat.agentName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                            (chat.lastMessage?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-                      }).toList();
+                final filteredChats =
+                    _searchQuery.isEmpty
+                        ? chats
+                        : chats.where((chat) {
+                          return chat.agentName.toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ||
+                              (chat.lastMessage?.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ??
+                                  false);
+                        }).toList();
 
                 if (filteredChats.isEmpty) {
                   return Center(
@@ -164,7 +187,9 @@ class _ChatListPageState extends State<ChatListPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _searchQuery.isEmpty ? Icons.chat_bubble_outline : Icons.search_off,
+                          _searchQuery.isEmpty
+                              ? Icons.chat_bubble_outline
+                              : Icons.search_off,
                           size: 64,
                           color: Colors.grey[400],
                         ),
@@ -173,14 +198,20 @@ class _ChatListPageState extends State<ChatListPage> {
                           _searchQuery.isEmpty
                               ? 'No conversations yet'
                               : 'No conversations found',
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _searchQuery.isEmpty
                               ? 'Start a conversation by messaging an agent from a property listing'
                               : 'Try a different search term',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -190,14 +221,15 @@ class _ChatListPageState extends State<ChatListPage> {
 
                 return ListView.separated(
                   itemCount: filteredChats.length,
-                  separatorBuilder: (context, index) => Divider(
-                    height: 1,
-                    color: Colors.grey[200],
-                    indent: 72,
-                  ),
+                  separatorBuilder:
+                      (context, index) => Divider(
+                        height: 1,
+                        color: Colors.grey[200],
+                        indent: 72,
+                      ),
                   itemBuilder: (context, index) {
                     final chat = filteredChats[index];
-                    return _buildChatTile(chat);
+                    return _buildChatItem(chat);
                   },
                 );
               },
@@ -208,105 +240,227 @@ class _ChatListPageState extends State<ChatListPage> {
     );
   }
 
-  Widget _buildChatTile(Chat chat) {
-    return Container(
-      color: Colors.white,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              child: Text(
-                chat.agentName.isNotEmpty ? chat.agentName[0].toUpperCase() : 'A',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+  Widget _buildChatItem(Chat chat) {
+    return StreamBuilder<int>(
+      stream: _chatService.getUnreadCountStream(chat.id),
+      builder: (context, unreadSnapshot) {
+        final unreadCount = unreadSnapshot.data ?? 0;
+        final hasUnread = unreadCount > 0;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-            if (chat.unreadCount > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 20,
-                    minHeight: 20,
-                  ),
-                  child: Text(
-                    chat.unreadCount > 99 ? '99+' : chat.unreadCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        title: Text(
-          chat.agentName,
-          style: TextStyle(
-            fontWeight: chat.unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
-            fontSize: 16,
+            ],
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              chat.lastMessage ?? 'No messages yet',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: chat.unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-              ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
             ),
-            const SizedBox(height: 2),
-            if (chat.lastMessageTime != null)
-              Text(
-                _formatTime(chat.lastMessageTime!),
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 12,
+            leading: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: Text(
+                    chat.userId == FirebaseAuth.instance.currentUser?.uid
+                        ? chat.agentName.isNotEmpty
+                            ? chat.agentName[0].toUpperCase()
+                            : 'A'
+                        : chat.userName.isNotEmpty
+                        ? chat.userName[0].toUpperCase()
+                        : 'U',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ),
-              ),
-          ],
-        ),
-        trailing: chat.unreadCount > 0
-            ? Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
+                if (hasUnread)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        chat.userId == FirebaseAuth.instance.currentUser?.uid
+                            ? chat.agentName
+                            : chat.userName,
+                        style: TextStyle(
+                          fontWeight:
+                              hasUnread ? FontWeight.bold : FontWeight.w500,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    if (chat.lastMessageTime != null)
+                      Text(
+                        _formatTime(chat.lastMessageTime!),
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 12,
+                          fontWeight:
+                              hasUnread ? FontWeight.w500 : FontWeight.normal,
+                        ),
+                      ),
+                  ],
                 ),
-              )
-            : null,
-        onTap: () => _openChat(chat),
-      ),
+                const SizedBox(height: 4),
+                // Role badge
+                StreamBuilder<DocumentSnapshot>(
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(
+                            chat.userId ==
+                                    FirebaseAuth.instance.currentUser?.uid
+                                ? chat.agentId
+                                : chat.userId,
+                          )
+                          .snapshots(),
+                  builder: (context, roleSnapshot) {
+                    String roleText = 'User';
+                    if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
+                      final userData =
+                          roleSnapshot.data!.data() as Map<String, dynamic>?;
+                      roleText = userData?['role'] ?? 'User';
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        roleText,
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  chat.lastMessage ?? 'No messages yet',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: hasUnread ? Colors.black87 : Colors.grey[600],
+                    fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            onTap: () => _openChat(chat),
+          ),
+        );
+      },
     );
   }
 
-  void _openChat(Chat chat) {
+  void _openChat(Chat chat) async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    // Determine the other participant
+    String otherUserId;
+    String otherUserName;
+    String otherUserRole = 'User';
+
+    if (chat.userId == currentUserId) {
+      otherUserId = chat.agentId;
+      otherUserName = chat.agentName;
+      // Get agent role from users collection
+      try {
+        final agentDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(chat.agentId)
+                .get();
+        if (agentDoc.exists) {
+          otherUserRole = agentDoc.data()?['role'] ?? 'Real Estate Agent';
+        }
+      } catch (e) {
+        print('Error getting agent role: $e');
+      }
+    } else {
+      otherUserId = chat.userId;
+      otherUserName = chat.userName;
+      // Get user role from users collection
+      try {
+        final userDoc =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(chat.userId)
+                .get();
+        if (userDoc.exists) {
+          otherUserRole = userDoc.data()?['role'] ?? 'Customer';
+        }
+      } catch (e) {
+        print('Error getting user role: $e');
+      }
+    }
+
     Navigator.pushNamed(
       context,
       AppRoutes.chat,
       arguments: {
-        'agentId': chat.agentId,
-        'agentName': chat.agentName,
+        'agentId': otherUserId,
+        'agentName': otherUserName,
+        'role': otherUserRole,
+        'userId': currentUserId,
+        'userName': '', // Optionally pass the current user's name if available
       },
     );
   }

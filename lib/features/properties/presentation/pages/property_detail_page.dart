@@ -3079,6 +3079,15 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       arguments: {
         'agentId': agent.id,
         'agentName': agent.fullName,
+        'role': agent.role,
+        'propertyId': _property?.id,
+        'propertyTitle': _property?.title,
+        'propertyPrice': _property?.price,
+        'propertyImage':
+            _property?.images.isNotEmpty == true
+                ? _property!.images.first
+                : null,
+        'propertyAddress': _property?.address,
       },
     );
   }
