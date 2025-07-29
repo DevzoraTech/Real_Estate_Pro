@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:mobile_1/features/chat/domain/entities/chat.dart';
-import 'package:mobile_1/features/chat/domain/entities/message.dart';
+import 'package:UpSpace/features/chat/domain/entities/chat.dart';
+import 'package:UpSpace/features/chat/domain/entities/message.dart';
 import 'notification_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';

@@ -7,7 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:mobile_1/app/app.dart';
+import 'package:UpSpace/app/app.dart';
 
 void main() {
   testWidgets('Real Estate App smoke test', (WidgetTester tester) async {
