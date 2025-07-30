@@ -1153,7 +1153,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isSelected ? item.selectedIcon : item.unselectedIcon,
         key: ValueKey('${index}_$isSelected'),
         color: isSelected ? AppColors.primary : AppColors.textSecondary,
-        size: isSelected ? 24 : 22,
+        size: isSelected ? 26 : 24,
       ),
     );
 
@@ -1164,7 +1164,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
           color:
               isSelected
@@ -1178,8 +1178,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             // Animated indicator dot
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              width: isSelected ? 4 : 0,
-              height: isSelected ? 4 : 0,
+              width: isSelected ? 5 : 0,
+              height: isSelected ? 5 : 0,
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
@@ -1191,7 +1191,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                fontSize: isSelected ? 9 : 8,
+                fontSize: isSelected ? 11 : 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
