@@ -8,6 +8,7 @@ import '../../../../core/models/user_profile.dart';
 import '../../../properties/presentation/pages/property_list_page.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
+import '../../../services/presentation/pages/services_page.dart';
 import '../../../chat/presentation/chat_list_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,6 +66,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     const PropertyListPage(),
     const SearchPage(),
     const FavoritesPage(),
+    const ServicesPage(),
     const ChatListPage(),
     const ProfilePage(),
   ];
@@ -73,6 +75,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     NavItem(Icons.home, Icons.home_outlined, 'Home'),
     NavItem(Icons.search, Icons.search_outlined, 'Search'),
     NavItem(Icons.favorite, Icons.favorite_border, 'Favorites'),
+    NavItem(Icons.work, Icons.work_outlined, 'Services'),
     NavItem(Icons.chat, Icons.chat_outlined, 'Chat'),
     NavItem(Icons.person, Icons.person_outline, 'Profile'),
   ];
@@ -169,7 +172,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             action: 'price_alerts',
           ),
         ];
-      case 3: // Chat page
+      case 3: // Services page
+        return [
+          FabMenuItem(
+            icon: Icons.search,
+            label: 'Search Services',
+            color: Colors.blue,
+            action: 'search_services',
+          ),
+          FabMenuItem(
+            icon: Icons.location_on,
+            label: 'Nearby',
+            color: Colors.green,
+            action: 'nearby_services',
+          ),
+          FabMenuItem(
+            icon: Icons.filter_list,
+            label: 'Advanced Filter',
+            color: Colors.orange,
+            action: 'filter_services',
+          ),
+        ];
+      case 4: // Chat page
         return [
           FabMenuItem(
             icon: Icons.chat_bubble_outline,
@@ -190,7 +214,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             action: 'archive_chats',
           ),
         ];
-      case 4: // Profile page
+      case 5: // Profile page
         return [
           FabMenuItem(
             icon: Icons.settings,
@@ -1106,11 +1130,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           topLeft: Radius.circular(25),
           topRight: Radius.circular(25),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(_navItems.length, (index) {
-            return _buildNavItem(index);
-          }),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(_navItems.length, (index) {
+              return _buildNavItem(index);
+            }),
+          ),
         ),
       ),
     );
@@ -1126,7 +1153,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         isSelected ? item.selectedIcon : item.unselectedIcon,
         key: ValueKey('${index}_$isSelected'),
         color: isSelected ? AppColors.primary : AppColors.textSecondary,
-        size: isSelected ? 26 : 24,
+        size: isSelected ? 24 : 22,
       ),
     );
 
@@ -1137,13 +1164,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         decoration: BoxDecoration(
           color:
               isSelected
                   ? AppColors.primary.withOpacity(0.1)
                   : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1151,24 +1178,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             // Animated indicator dot
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              width: isSelected ? 6 : 0,
-              height: isSelected ? 6 : 0,
+              width: isSelected ? 4 : 0,
+              height: isSelected ? 4 : 0,
               decoration: BoxDecoration(
                 color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             iconWidget,
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                fontSize: isSelected ? 12 : 11,
+                fontSize: isSelected ? 9 : 8,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
-              child: Text(item.label),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
