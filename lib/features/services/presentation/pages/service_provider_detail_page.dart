@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/service_provider_model.dart';
 import '../../../../core/constants/service_categories.dart';
+import 'service_booking_page.dart';
 
 class ServiceProviderDetailPage extends StatefulWidget {
   final ServiceProviderModel provider;
@@ -623,34 +624,16 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                // Make phone call
-                _showContactDialog();
-              },
-              icon: const Icon(Icons.phone),
-              label: const Text('Call'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
+          // Primary action - Book Service
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                // Open chat/message
-                _openChat();
-              },
-              icon: const Icon(Icons.message),
-              label: const Text('Message'),
+              onPressed: _bookService,
+              icon: const Icon(Icons.calendar_today),
+              label: const Text('Book Service'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -658,8 +641,45 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          // Secondary actions
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _showContactDialog,
+                  icon: const Icon(Icons.phone),
+                  label: const Text('Call'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openChat,
+                  icon: const Icon(Icons.message),
+                  label: const Text('Message'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -746,6 +766,15 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
       const SnackBar(
         content: Text('Opening chat...'),
         backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  void _bookService() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ServiceBookingPage(provider: widget.provider),
       ),
     );
   }

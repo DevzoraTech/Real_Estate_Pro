@@ -1,58 +1,34 @@
-class ServiceProviderModel {
-  final String id;
-  final String name;
-  final String email;
-  final String phone;
-  final String profileImage;
-  final String bio;
-  final List<String> serviceCategories;
-  final String primaryService;
-  final double rating;
-  final int reviewsCount;
-  final String location;
-  final String city;
-  final String state;
-  final double latitude;
-  final double longitude;
-  final List<String> portfolioImages;
-  final List<String> certifications;
-  final int yearsOfExperience;
-  final bool isVerified;
-  final bool isOnline;
-  final String availability;
-  final Map<String, dynamic> pricing;
-  final List<String> serviceAreas;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final DateTime? lastActive;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../features/services/domain/entities/service_provider.dart';
 
-  ServiceProviderModel({
-    required this.id,
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.profileImage,
-    required this.bio,
-    required this.serviceCategories,
-    required this.primaryService,
-    required this.rating,
-    required this.reviewsCount,
-    required this.location,
-    required this.city,
-    required this.state,
-    required this.latitude,
-    required this.longitude,
-    required this.portfolioImages,
-    required this.certifications,
-    required this.yearsOfExperience,
-    required this.isVerified,
-    required this.isOnline,
-    required this.availability,
-    required this.pricing,
-    required this.serviceAreas,
-    required this.createdAt,
-    required this.updatedAt,
-    this.lastActive,
+class ServiceProviderModel extends ServiceProvider {
+  const ServiceProviderModel({
+    required super.id,
+    required super.name,
+    required super.email,
+    required super.phone,
+    required super.profileImage,
+    required super.bio,
+    required super.serviceCategories,
+    required super.primaryService,
+    required super.rating,
+    required super.reviewsCount,
+    required super.location,
+    required super.city,
+    required super.state,
+    required super.latitude,
+    required super.longitude,
+    required super.portfolioImages,
+    required super.certifications,
+    required super.yearsOfExperience,
+    required super.isVerified,
+    required super.isOnline,
+    required super.availability,
+    required super.pricing,
+    required super.serviceAreas,
+    required super.createdAt,
+    required super.updatedAt,
+    super.lastActive,
   });
 
   String get fullLocation => '$location, $city, $state';
@@ -63,9 +39,9 @@ class ServiceProviderModel {
   factory ServiceProviderModel.fromJson(Map<String, dynamic> json) {
     return ServiceProviderModel(
       id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      phone: json['phone'],
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      phone: json['phone'] ?? '',
       profileImage: json['profile_image'] ?? '',
       bio: json['bio'] ?? '',
       serviceCategories: List<String>.from(json['service_categories'] ?? []),
@@ -85,13 +61,30 @@ class ServiceProviderModel {
       availability: json['availability'] ?? 'available',
       pricing: Map<String, dynamic>.from(json['pricing'] ?? {}),
       serviceAreas: List<String>.from(json['service_areas'] ?? []),
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: _parseDateTime(json['created_at']),
+      updatedAt: _parseDateTime(json['updated_at']),
       lastActive:
           json['last_active'] != null
-              ? DateTime.parse(json['last_active'])
+              ? _parseDateTime(json['last_active'])
               : null,
     );
+  }
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) {
+      return DateTime.now();
+    }
+
+    if (value is Timestamp) {
+      return value.toDate();
+    }
+
+    if (value is String) {
+      return DateTime.parse(value);
+    }
+
+    // Fallback for any other type
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {

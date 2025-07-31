@@ -1,45 +1,182 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/constants/service_categories.dart';
 import '../../../../core/models/service_provider_model.dart';
-import '../../../../core/di/injection_container.dart' as di;
-import '../../domain/entities/service_provider.dart';
-import '../bloc/service_bloc.dart';
-import '../bloc/service_event.dart';
-import '../bloc/service_state.dart';
 import 'service_provider_detail_page.dart';
 
-class ServicesPage extends StatelessWidget {
-  const ServicesPage({super.key});
+class ServicesDemoPage extends StatefulWidget {
+  const ServicesDemoPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create:
-          (context) =>
-              di.sl<ServiceBloc>()
-                ..add(const LoadServiceProviders()) // Load all providers first
-                ..add(const LoadFeaturedProviders())
-                ..add(const LoadTopRatedProviders()),
-      child: const _ServicesPageContent(),
-    );
-  }
+  State<ServicesDemoPage> createState() => _ServicesDemoPageState();
 }
 
-class _ServicesPageContent extends StatefulWidget {
-  const _ServicesPageContent();
-
-  @override
-  State<_ServicesPageContent> createState() => _ServicesPageContentState();
-}
-
-class _ServicesPageContentState extends State<_ServicesPageContent> {
+class _ServicesDemoPageState extends State<ServicesDemoPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'all';
   bool _showOnlineOnly = false;
   bool _showVerifiedOnly = false;
+
+  // Mock data for demonstration
+  final List<ServiceProviderModel> _mockProviders = [
+    ServiceProviderModel(
+      id: '1',
+      name: 'John Smith',
+      email: 'john@example.com',
+      phone: '+1234567890',
+      profileImage: '',
+      bio: 'Experienced real estate agent with 10+ years in the industry',
+      serviceCategories: ['real_estate_agents'],
+      primaryService: 'Real Estate Agent',
+      rating: 4.8,
+      reviewsCount: 127,
+      location: 'Downtown',
+      city: 'San Francisco',
+      state: 'CA',
+      latitude: 37.7749,
+      longitude: -122.4194,
+      portfolioImages: [],
+      certifications: ['Licensed Real Estate Agent'],
+      yearsOfExperience: 10,
+      isVerified: true,
+      isOnline: true,
+      availability: 'available',
+      pricing: {'consultation': 100.0},
+      serviceAreas: ['San Francisco', 'Oakland'],
+      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      updatedAt: DateTime.now(),
+    ),
+    ServiceProviderModel(
+      id: '2',
+      name: 'Sarah Johnson',
+      email: 'sarah@example.com',
+      phone: '+1234567891',
+      profileImage: '',
+      bio: 'Professional interior designer specializing in modern homes',
+      serviceCategories: ['interior_designers'],
+      primaryService: 'Interior Designer',
+      rating: 4.9,
+      reviewsCount: 89,
+      location: 'Mission District',
+      city: 'San Francisco',
+      state: 'CA',
+      latitude: 37.7749,
+      longitude: -122.4194,
+      portfolioImages: [],
+      certifications: ['Certified Interior Designer'],
+      yearsOfExperience: 8,
+      isVerified: true,
+      isOnline: false,
+      availability: 'busy',
+      pricing: {'consultation': 150.0},
+      serviceAreas: ['San Francisco', 'Palo Alto'],
+      createdAt: DateTime.now().subtract(const Duration(days: 200)),
+      updatedAt: DateTime.now(),
+    ),
+    ServiceProviderModel(
+      id: '3',
+      name: 'Mike Wilson',
+      email: 'mike@example.com',
+      phone: '+1234567892',
+      profileImage: '',
+      bio: 'Licensed contractor with expertise in home renovations',
+      serviceCategories: ['contractors'],
+      primaryService: 'General Contractor',
+      rating: 4.7,
+      reviewsCount: 156,
+      location: 'Castro',
+      city: 'San Francisco',
+      state: 'CA',
+      latitude: 37.7749,
+      longitude: -122.4194,
+      portfolioImages: [],
+      certifications: ['Licensed Contractor'],
+      yearsOfExperience: 15,
+      isVerified: true,
+      isOnline: true,
+      availability: 'available',
+      pricing: {'hourly': 85.0},
+      serviceAreas: ['San Francisco', 'San Jose'],
+      createdAt: DateTime.now().subtract(const Duration(days: 500)),
+      updatedAt: DateTime.now(),
+    ),
+    ServiceProviderModel(
+      id: '4',
+      name: 'Lisa Chen',
+      email: 'lisa@example.com',
+      phone: '+1234567893',
+      profileImage: '',
+      bio: 'Real estate lawyer with 12 years of experience',
+      serviceCategories: ['lawyers'],
+      primaryService: 'Real Estate Lawyer',
+      rating: 4.9,
+      reviewsCount: 203,
+      location: 'Financial District',
+      city: 'San Francisco',
+      state: 'CA',
+      latitude: 37.7749,
+      longitude: -122.4194,
+      portfolioImages: [],
+      certifications: ['Licensed Attorney', 'Real Estate Law Specialist'],
+      yearsOfExperience: 12,
+      isVerified: true,
+      isOnline: true,
+      availability: 'available',
+      pricing: {'consultation': 300.0},
+      serviceAreas: ['San Francisco', 'Oakland', 'San Jose'],
+      createdAt: DateTime.now().subtract(const Duration(days: 800)),
+      updatedAt: DateTime.now(),
+    ),
+  ];
+
+  List<ServiceProviderModel> get _filteredProviders {
+    var providers = _mockProviders;
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      providers =
+          providers.where((provider) {
+            return provider.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                provider.primaryService.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                provider.bio.toLowerCase().contains(_searchQuery.toLowerCase());
+          }).toList();
+    }
+
+    // Apply category filter
+    if (_selectedCategory != 'all') {
+      providers =
+          providers.where((provider) {
+            return provider.serviceCategories.contains(_selectedCategory);
+          }).toList();
+    }
+
+    // Apply online filter
+    if (_showOnlineOnly) {
+      providers = providers.where((provider) => provider.isOnline).toList();
+    }
+
+    // Apply verified filter
+    if (_showVerifiedOnly) {
+      providers = providers.where((provider) => provider.isVerified).toList();
+    }
+
+    return providers;
+  }
+
+  List<ServiceProviderModel> get _featuredProviders {
+    return _filteredProviders.where((p) => p.rating >= 4.8).take(3).toList();
+  }
+
+  List<ServiceProviderModel> get _topRatedProviders {
+    var sorted = List<ServiceProviderModel>.from(_filteredProviders);
+    sorted.sort((a, b) => b.rating.compareTo(a.rating));
+    return sorted.take(3).toList();
+  }
 
   @override
   void initState() {
@@ -48,7 +185,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
       setState(() {
         _searchQuery = _searchController.text.trim();
       });
-      _performSearch();
     });
   }
 
@@ -58,22 +194,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
     super.dispose();
   }
 
-  void _performSearch() {
-    if (_searchQuery.isNotEmpty ||
-        _selectedCategory != 'all' ||
-        _showOnlineOnly ||
-        _showVerifiedOnly) {
-      context.read<ServiceBloc>().add(
-        SearchServiceProviders(
-          query: _searchQuery.isNotEmpty ? _searchQuery : null,
-          category: _selectedCategory != 'all' ? _selectedCategory : null,
-          isOnline: _showOnlineOnly ? true : null,
-          isVerified: _showVerifiedOnly ? true : null,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,7 +201,9 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            context.read<ServiceBloc>().add(const RefreshServices());
+            // Simulate refresh
+            await Future.delayed(const Duration(milliseconds: 500));
+            setState(() {});
           },
           color: AppColors.primary,
           backgroundColor: Colors.white,
@@ -169,7 +291,7 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                               ),
                               const SizedBox(width: 8),
                               const Text(
-                                'All Services',
+                                'Demo Mode',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -200,7 +322,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                           setState(() {
                             _showVerifiedOnly = !_showVerifiedOnly;
                           });
-                          _performSearch();
                         },
                       ),
                       IconButton(
@@ -217,7 +338,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                           setState(() {
                             _showOnlineOnly = !_showOnlineOnly;
                           });
-                          _performSearch();
                         },
                       ),
                     ],
@@ -352,18 +472,12 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
             ),
             const SizedBox(width: 12),
             _buildFilterChip(
-              'Property Owners',
-              'property_owners',
-              Icons.home_work,
-            ),
-            const SizedBox(width: 12),
-            _buildFilterChip('Contractors', 'contractors', Icons.construction),
-            const SizedBox(width: 12),
-            _buildFilterChip(
               'Designers',
               'interior_designers',
               Icons.design_services,
             ),
+            const SizedBox(width: 12),
+            _buildFilterChip('Contractors', 'contractors', Icons.construction),
             const SizedBox(width: 12),
             _buildFilterChip('Legal', 'lawyers', Icons.gavel),
           ],
@@ -379,7 +493,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
         setState(() {
           _selectedCategory = category;
         });
-        _performSearch();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -453,9 +566,8 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
-                        _selectedCategory = category['id'] as String;
+                        _selectedCategory = category['id'];
                       });
-                      _performSearch();
                     },
                     child: Column(
                       children: [
@@ -470,20 +582,20 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                             border: Border.all(
                               color:
                                   _selectedCategory == category['id']
-                                      ? category['color'] as Color
+                                      ? category['color']
                                       : Colors.transparent,
                               width: 2,
                             ),
                           ),
                           child: Icon(
-                            category['icon'] as IconData,
-                            color: category['color'] as Color,
+                            category['icon'],
+                            color: category['color'],
                             size: 32,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          category['name'] as String,
+                          category['name'],
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
@@ -509,71 +621,26 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
   }
 
   Widget _buildFeaturedProviders() {
-    return SliverToBoxAdapter(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Featured Providers',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    context.read<ServiceBloc>().add(
-                      const LoadServiceProviders(),
-                    );
-                  },
-                  child: const Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 280,
-            child: BlocBuilder<ServiceBloc, ServiceState>(
-              builder: (context, state) {
-                if (state is ServiceLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is FeaturedProvidersLoaded) {
-                  if (state.providers.isEmpty) {
-                    return _buildEmptyState('No featured providers found');
-                  }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: state.providers.length,
-                    itemBuilder: (context, index) {
-                      return _buildProviderCard(state.providers[index]);
-                    },
-                  );
-                } else if (state is ServiceError) {
-                  return Center(child: Text('Error: ${state.message}'));
-                }
-                return _buildEmptyState('No featured providers found');
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+    return _buildProviderSection('Featured Providers', _featuredProviders);
   }
 
   Widget _buildTopRatedProviders() {
+    return _buildProviderSection('Top Rated', _topRatedProviders);
+  }
+
+  Widget _buildAllProviders() {
+    return _buildProviderSection(
+      'All Providers',
+      _filteredProviders,
+      showViewAll: false,
+    );
+  }
+
+  Widget _buildProviderSection(
+    String title,
+    List<ServiceProviderModel> providers, {
+    bool showViewAll = true,
+  }) {
     return SliverToBoxAdapter(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,62 +650,50 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Top Rated',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    context.read<ServiceBloc>().add(
-                      const LoadServiceProviders(),
-                    );
-                  },
-                  child: const Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                if (showViewAll)
+                  TextButton(
+                    onPressed: () {
+                      // Show all providers
+                    },
+                    child: const Text(
+                      'View All',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
           SizedBox(
             height: 280,
-            child: BlocBuilder<ServiceBloc, ServiceState>(
-              builder: (context, state) {
-                if (state is ServiceLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is TopRatedProvidersLoaded) {
-                  if (state.providers.isEmpty) {
-                    return _buildEmptyState('No top rated providers found');
-                  }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: state.providers.length,
-                    itemBuilder: (context, index) {
-                      return _buildProviderCard(state.providers[index]);
-                    },
-                  );
-                } else if (state is ServiceError) {
-                  return Center(child: Text('Error: ${state.message}'));
-                }
-                return _buildEmptyState('No top rated providers found');
-              },
-            ),
+            child:
+                providers.isEmpty
+                    ? _buildEmptyState('No providers found')
+                    : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: providers.length,
+                      itemBuilder: (context, index) {
+                        return _buildProviderCard(providers[index]);
+                      },
+                    ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProviderCard(ServiceProvider provider) {
+  Widget _buildProviderCard(ServiceProviderModel provider) {
     return Container(
       width: 220,
       margin: const EdgeInsets.only(right: 16),
@@ -655,42 +710,11 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
       ),
       child: GestureDetector(
         onTap: () {
-          // Convert ServiceProvider entity to ServiceProviderModel for the detail page
-          final providerModel = ServiceProviderModel(
-            id: provider.id,
-            name: provider.name,
-            email: provider.email,
-            phone: provider.phone,
-            profileImage: provider.profileImage,
-            bio: provider.bio,
-            serviceCategories: provider.serviceCategories,
-            primaryService: provider.primaryService,
-            rating: provider.rating,
-            reviewsCount: provider.reviewsCount,
-            location: provider.location,
-            city: provider.city,
-            state: provider.state,
-            latitude: provider.latitude,
-            longitude: provider.longitude,
-            portfolioImages: provider.portfolioImages,
-            certifications: provider.certifications,
-            yearsOfExperience: provider.yearsOfExperience,
-            isVerified: provider.isVerified,
-            isOnline: provider.isOnline,
-            availability: provider.availability,
-            pricing: provider.pricing,
-            serviceAreas: provider.serviceAreas,
-            createdAt: provider.createdAt,
-            updatedAt: provider.updatedAt,
-            lastActive: provider.lastActive,
-          );
-
           Navigator.push(
             context,
             MaterialPageRoute(
               builder:
-                  (context) =>
-                      ServiceProviderDetailPage(provider: providerModel),
+                  (context) => ServiceProviderDetailPage(provider: provider),
             ),
           );
         },
@@ -708,16 +732,7 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                     height: 120,
                     width: double.infinity,
                     color: Colors.grey[200],
-                    child:
-                        provider.profileImage.isNotEmpty
-                            ? Image.network(
-                              provider.profileImage,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildDefaultAvatar(provider.name);
-                              },
-                            )
-                            : _buildDefaultAvatar(provider.name),
+                    child: _buildDefaultAvatar(provider.name),
                   ),
                 ),
                 Positioned(
@@ -872,383 +887,6 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
           Text(
             message,
             style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProviderListItem(ServiceProvider provider) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              child:
-                  provider.profileImage.isNotEmpty
-                      ? ClipOval(
-                        child: Image.network(
-                          provider.profileImage,
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Text(
-                              provider.name.isNotEmpty
-                                  ? provider.name[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                      : Text(
-                        provider.name.isNotEmpty
-                            ? provider.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-            ),
-            if (provider.isVerified)
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.verified,
-                    color: Colors.white,
-                    size: 12,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        title: Text(
-          provider.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              provider.primaryService,
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.star, color: Colors.amber, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  '${provider.rating.toStringAsFixed(1)} (${provider.reviewsCount} reviews)',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        provider.isOnline
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    provider.isOnline ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      color:
-                          provider.isOnline ? Colors.green : Colors.grey[600],
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.location_on, color: Colors.grey[500], size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  '${provider.city}, ${provider.state}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                const Spacer(),
-                Text(
-                  '${provider.yearsOfExperience} years exp.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Colors.grey,
-        ),
-        onTap: () {
-          // Convert ServiceProvider entity to ServiceProviderModel for the detail page
-          final providerModel = ServiceProviderModel(
-            id: provider.id,
-            name: provider.name,
-            email: provider.email,
-            phone: provider.phone,
-            profileImage: provider.profileImage,
-            bio: provider.bio,
-            serviceCategories: provider.serviceCategories,
-            primaryService: provider.primaryService,
-            rating: provider.rating,
-            reviewsCount: provider.reviewsCount,
-            location: provider.location,
-            city: provider.city,
-            state: provider.state,
-            latitude: provider.latitude,
-            longitude: provider.longitude,
-            portfolioImages: provider.portfolioImages,
-            certifications: provider.certifications,
-            yearsOfExperience: provider.yearsOfExperience,
-            isVerified: provider.isVerified,
-            isOnline: provider.isOnline,
-            availability: provider.availability,
-            pricing: provider.pricing,
-            serviceAreas: provider.serviceAreas,
-            createdAt: provider.createdAt,
-            updatedAt: provider.updatedAt,
-            lastActive: provider.lastActive,
-          );
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) =>
-                      ServiceProviderDetailPage(provider: providerModel),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildAllProviders() {
-    return SliverToBoxAdapter(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'All Providers',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                BlocBuilder<ServiceBloc, ServiceState>(
-                  builder: (context, state) {
-                    if (state is ServiceProvidersLoaded) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${state.providers.length} providers',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
-            ),
-          ),
-          BlocBuilder<ServiceBloc, ServiceState>(
-            builder: (context, state) {
-              if (state is ServiceLoading) {
-                return const SizedBox(
-                  height: 200,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              } else if (state is ServiceProvidersLoaded) {
-                if (state.providers.isEmpty) {
-                  return SizedBox(
-                    height: 200,
-                    child: _buildEmptyState('No providers found'),
-                  );
-                }
-
-                // Sort providers by rating (high to low)
-                final sortedProviders = List<ServiceProvider>.from(
-                  state.providers,
-                );
-                sortedProviders.sort((a, b) => b.rating.compareTo(a.rating));
-
-                return Column(
-                  children: [
-                    // Show first few providers in horizontal scroll
-                    SizedBox(
-                      height: 280,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount:
-                            sortedProviders.length > 10
-                                ? 10
-                                : sortedProviders.length,
-                        itemBuilder: (context, index) {
-                          return _buildProviderCard(sortedProviders[index]);
-                        },
-                      ),
-                    ),
-
-                    // Show remaining providers in vertical list
-                    if (sortedProviders.length > 10) ...[
-                      const SizedBox(height: 20),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children:
-                              sortedProviders
-                                  .skip(10)
-                                  .map(
-                                    (provider) =>
-                                        _buildProviderListItem(provider),
-                                  )
-                                  .toList(),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              } else if (state is SearchResultsLoaded) {
-                // Show search results if user is searching
-                if (state.providers.isEmpty) {
-                  return SizedBox(
-                    height: 200,
-                    child: _buildEmptyState(
-                      'No providers found for your search',
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: [
-                    SizedBox(
-                      height: 280,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: state.providers.length,
-                        itemBuilder: (context, index) {
-                          return _buildProviderCard(state.providers[index]);
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              } else if (state is ServiceError) {
-                return SizedBox(
-                  height: 200,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 48,
-                          color: Colors.red[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading providers',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          state.message,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<ServiceBloc>().add(
-                              const LoadServiceProviders(),
-                            );
-                          },
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              return SizedBox(
-                height: 200,
-                child: _buildEmptyState('No providers available'),
-              );
-            },
           ),
         ],
       ),

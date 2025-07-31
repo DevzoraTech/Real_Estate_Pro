@@ -9,6 +9,8 @@ import '../../../properties/presentation/pages/property_list_page.dart';
 import '../../../search/presentation/pages/search_page.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
 import '../../../services/presentation/pages/services_page.dart';
+import '../../../services/presentation/pages/my_bookings_page.dart';
+import '../../../services/presentation/pages/my_bookings_page.dart';
 import '../../../chat/presentation/chat_list_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -175,22 +177,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 3: // Services page
         return [
           FabMenuItem(
+            icon: Icons.book_online,
+            label: 'My Bookings',
+            color: Colors.blue,
+            action: 'my_bookings',
+          ),
+          FabMenuItem(
             icon: Icons.search,
             label: 'Search Services',
-            color: Colors.blue,
+            color: Colors.green,
             action: 'search_services',
           ),
           FabMenuItem(
             icon: Icons.location_on,
             label: 'Nearby',
-            color: Colors.green,
-            action: 'nearby_services',
-          ),
-          FabMenuItem(
-            icon: Icons.filter_list,
-            label: 'Advanced Filter',
             color: Colors.orange,
-            action: 'filter_services',
+            action: 'nearby_services',
           ),
         ];
       case 4: // Chat page
@@ -541,6 +543,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         print('Sharing app...');
         _shareApp();
         break;
+      case 'my_bookings':
+        print('Opening my bookings...');
+        _openMyBookings();
+        break;
       default:
         print('Unknown action: $action');
         _showActionSnackBar('Feature coming soon!', AppColors.primary);
@@ -764,6 +770,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _shareApp() {
     _showActionSnackBar('Sharing app...', Colors.purple);
     // TODO: Implement app sharing functionality
+  }
+
+  // Open my bookings
+  void _openMyBookings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MyBookingsPage()),
+    );
   }
 
   // Handle logout
