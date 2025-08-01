@@ -10,7 +10,6 @@ import '../../../search/presentation/pages/search_page.dart';
 import '../../../favorites/presentation/pages/favorites_page.dart';
 import '../../../services/presentation/pages/services_page.dart';
 import '../../../services/presentation/pages/my_bookings_page.dart';
-import '../../../services/presentation/pages/my_bookings_page.dart';
 import '../../../chat/presentation/chat_list_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -478,16 +477,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // Close menu first
     _toggleFabMenu();
 
-    // Execute action after menu closes
-    Future.delayed(const Duration(milliseconds: 250), () {
+    // Execute action immediately
+    try {
       if (item.route != null) {
         print('Navigating to route: ${item.route}');
         Navigator.pushNamed(context, item.route!);
       } else if (item.action != null) {
         print('Executing action: ${item.action}');
         _handleFabAction(item.action!);
+      } else {
+        print('No route or action specified for item: ${item.label}');
+        _showActionSnackBar('Feature not implemented yet', AppColors.primary);
       }
-    });
+    } catch (e) {
+      print('Error executing FAB action: $e');
+      _showActionSnackBar('Error: $e', Colors.red);
+    }
   }
 
   void _handleFabAction(String action) {
@@ -546,6 +551,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 'my_bookings':
         print('Opening my bookings...');
         _openMyBookings();
+        break;
+      case 'search_services':
+        print('Searching services...');
+        _showActionSnackBar(
+          'Search services feature coming soon!',
+          Colors.green,
+        );
+        break;
+      case 'nearby_services':
+        print('Finding nearby services...');
+        _showActionSnackBar(
+          'Nearby services feature coming soon!',
+          Colors.orange,
+        );
+        break;
+      case 'new_chat':
+        print('Creating new chat...');
+        _showActionSnackBar('New chat feature coming soon!', Colors.blue);
+        break;
+      case 'search_chats':
+        print('Searching chats...');
+        _showActionSnackBar('Search chats feature coming soon!', Colors.green);
+        break;
+      case 'archive_chats':
+        print('Archiving chats...');
+        _showActionSnackBar(
+          'Archive chats feature coming soon!',
+          Colors.orange,
+        );
         break;
       default:
         print('Unknown action: $action');
@@ -1245,7 +1279,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   scale: scale,
                   child: Opacity(
                     opacity: opacity,
-                    child: _buildFabMenuItem(item),
+                    child: _isFabMenuOpen ? _buildFabMenuItem(item) : null,
                   ),
                 ),
               );
@@ -1305,7 +1339,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 2:
         return Colors.red; // Favorites - Red
       case 3:
-        return Colors.purple; // Profile - Purple
+        return Colors.blue; // Services - Blue
+      case 4:
+        return Colors.purple; // Chat - Purple
+      case 5:
+        return Colors.grey; // Profile - Grey
       default:
         return AppColors.primary;
     }
@@ -1316,10 +1354,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       case 0:
         return Icons.add_home; // Home
       case 1:
-        return Icons.search_off; // Search
+        return Icons.search; // Search
       case 2:
         return Icons.favorite; // Favorites
       case 3:
+        return Icons.work; // Services
+      case 4:
+        return Icons.chat; // Chat
+      case 5:
         return Icons.person_add; // Profile
       default:
         return Icons.add;
@@ -1327,67 +1369,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildFabMenuItem(FabMenuItem item) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Label
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _onFabMenuItemTap(item),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Text(
-                item.label,
-                style: TextStyle(
-                  color: item.color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
+    return GestureDetector(
+      onTap: () {
+        print('=== FAB MENU ITEM TAPPED ===');
+        print('Item: ${item.label}');
+        print('Action: ${item.action}');
+        print('Route: ${item.route}');
+        _onFabMenuItemTap(item);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
+          ],
         ),
-
-        const SizedBox(width: 12),
-
-        // Icon button
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _onFabMenuItemTap(item),
-            borderRadius: BorderRadius.circular(25),
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(item.icon, color: item.color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              item.label,
+              style: TextStyle(
                 color: item.color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: item.color.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
-              child: Icon(item.icon, color: Colors.white, size: 24),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 

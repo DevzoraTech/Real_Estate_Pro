@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/service_provider_model.dart';
 import '../../../../core/constants/service_categories.dart';
@@ -18,6 +19,18 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
   int _currentImageIndex = 0;
   bool _isFavorite = false;
   final PageController _pageController = PageController();
+
+  // Real-time rating and review data
+  double _realTimeRating = 0.0;
+  int _realTimeReviewsCount = 0;
+  List<Map<String, dynamic>> _reviews = [];
+  bool _isLoadingReviews = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRealTimeRatingAndReviews();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -502,57 +515,75 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              children: [
-                Row(
+          _isLoadingReviews
+              ? Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: const Center(child: CircularProgressIndicator()),
+              )
+              : Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Column(
                   children: [
-                    Text(
-                      widget.provider.rating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: List.generate(5, (index) {
-                              return Icon(
-                                index < widget.provider.rating.floor()
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: Colors.amber,
-                                size: 20,
-                              );
-                            }),
+                    Row(
+                      children: [
+                        Text(
+                          _realTimeRating.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${widget.provider.reviewsCount} reviews',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: List.generate(5, (index) {
+                                  return Icon(
+                                    index < _realTimeRating.floor()
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '$_realTimeReviewsCount reviews',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                    if (_reviews.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      ..._reviews
+                          .take(3)
+                          .map((review) => _buildReviewItem(review)),
+                    ],
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
         ],
       ),
     );
@@ -775,6 +806,160 @@ class _ServiceProviderDetailPageState extends State<ServiceProviderDetailPage> {
       context,
       MaterialPageRoute(
         builder: (context) => ServiceBookingPage(provider: widget.provider),
+      ),
+    );
+  }
+
+  Future<void> _fetchRealTimeRatingAndReviews() async {
+    setState(() {
+      _isLoadingReviews = true;
+    });
+
+    try {
+      // Check if this is a real estate agent (from users collection)
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.provider.id)
+              .get();
+
+      if (userDoc.exists) {
+        // This is a real estate agent, fetch reviews from users/{userId}/reviews
+        final reviewsSnapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.provider.id)
+                .collection('reviews')
+                .orderBy('timestamp', descending: true)
+                .limit(10)
+                .get();
+
+        _processReviews(reviewsSnapshot.docs);
+      } else {
+        // This is a regular service provider, fetch from service_reviews collection
+        final reviewsSnapshot =
+            await FirebaseFirestore.instance
+                .collection('service_reviews')
+                .where('provider_id', isEqualTo: widget.provider.id)
+                .orderBy('created_at', descending: true)
+                .limit(10)
+                .get();
+
+        _processReviews(reviewsSnapshot.docs);
+      }
+    } catch (e) {
+      print('Error fetching reviews: $e');
+    } finally {
+      setState(() {
+        _isLoadingReviews = false;
+      });
+    }
+  }
+
+  void _processReviews(List<QueryDocumentSnapshot> reviewDocs) {
+    if (reviewDocs.isEmpty) {
+      setState(() {
+        _realTimeRating = 0.0;
+        _realTimeReviewsCount = 0;
+        _reviews = [];
+      });
+      return;
+    }
+
+    double totalRating = 0.0;
+    List<Map<String, dynamic>> reviewsList = [];
+
+    for (final doc in reviewDocs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final rating = (data['rating'] as num?)?.toDouble() ?? 0.0;
+      totalRating += rating;
+
+      reviewsList.add({
+        'id': doc.id,
+        'rating': rating,
+        'comment': data['comment'] ?? data['review'] ?? '',
+        'timestamp': data['timestamp'] ?? data['created_at'],
+        'reviewerName': data['reviewerName'] ?? 'Anonymous',
+        'userId': data['userId'] ?? data['customer_id'] ?? '',
+      });
+    }
+
+    setState(() {
+      _realTimeRating = totalRating / reviewDocs.length;
+      _realTimeReviewsCount = reviewDocs.length;
+      _reviews = reviewsList;
+    });
+  }
+
+  Widget _buildReviewItem(Map<String, dynamic> review) {
+    final timestamp = review['timestamp'];
+    String timeAgo = 'Recently';
+
+    if (timestamp != null) {
+      try {
+        final date =
+            timestamp is Timestamp
+                ? timestamp.toDate()
+                : DateTime.parse(timestamp.toString());
+        final now = DateTime.now();
+        final difference = now.difference(date);
+
+        if (difference.inDays > 0) {
+          timeAgo = '${difference.inDays} days ago';
+        } else if (difference.inHours > 0) {
+          timeAgo = '${difference.inHours} hours ago';
+        } else if (difference.inMinutes > 0) {
+          timeAgo = '${difference.inMinutes} minutes ago';
+        } else {
+          timeAgo = 'Just now';
+        }
+      } catch (e) {
+        timeAgo = 'Recently';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  review['reviewerName'] ?? 'Anonymous',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < (review['rating'] as double).floor()
+                        ? Icons.star
+                        : Icons.star_border,
+                    color: Colors.amber,
+                    size: 16,
+                  );
+                }),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (review['comment'] != null &&
+              review['comment'].toString().isNotEmpty)
+            Text(
+              review['comment'],
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          const SizedBox(height: 4),
+          Text(
+            timeAgo,
+            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+          ),
+        ],
       ),
     );
   }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
+import '../data/models/chat.dart';
 import '../data/services/chat_service.dart';
-import '../domain/entities/chat.dart';
-import 'improved_chat_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key});
@@ -14,443 +14,611 @@ class ChatListPage extends StatefulWidget {
   State<ChatListPage> createState() => _ChatListPageState();
 }
 
-class _ChatListPageState extends State<ChatListPage> {
+class _ChatListPageState extends State<ChatListPage>
+    with TickerProviderStateMixin {
   final ChatService _chatService = ChatService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimations();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  void _initializeAnimations() {
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _fadeController.forward();
+    _slideController.forward();
+  }
+
   @override
   void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return Scaffold(
-        body: Center(
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      appBar: _buildModernAppBar(),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.login, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'Please log in to view your chats',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.login),
-                child: const Text('Log In'),
-              ),
+              _buildSearchSection(),
+              Expanded(child: _buildChatsList()),
             ],
           ),
         ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text('Messages'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          StreamBuilder<int>(
-            stream: _chatService.getTotalUnreadCountStream(),
-            builder: (context, snapshot) {
-              final unreadCount = snapshot.data ?? 0;
-              if (unreadCount > 0) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 16),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    unreadCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search conversations...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon:
-                    _searchQuery.isNotEmpty
-                        ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                        : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-              ),
-              onChanged: (value) => setState(() => _searchQuery = value),
-            ),
-          ),
-          // Chat list
-          Expanded(
-            child: StreamBuilder<List<Chat>>(
-              stream: _chatService.getUserChatsStream(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: Colors.red[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading chats',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          snapshot.error.toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final chats = snapshot.data ?? [];
-                final filteredChats =
-                    _searchQuery.isEmpty
-                        ? chats
-                        : chats.where((chat) {
-                          return chat.agentName.toLowerCase().contains(
-                                _searchQuery.toLowerCase(),
-                              ) ||
-                              (chat.lastMessage?.toLowerCase().contains(
-                                    _searchQuery.toLowerCase(),
-                                  ) ??
-                                  false);
-                        }).toList();
-
-                if (filteredChats.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _searchQuery.isEmpty
-                              ? Icons.chat_bubble_outline
-                              : Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'No conversations yet'
-                              : 'No conversations found',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'Start a conversation by messaging an agent from a property listing'
-                              : 'Try a different search term',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[500],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  itemCount: filteredChats.length,
-                  separatorBuilder:
-                      (context, index) => Divider(
-                        height: 1,
-                        color: Colors.grey[200],
-                        indent: 72,
-                      ),
-                  itemBuilder: (context, index) {
-                    final chat = filteredChats[index];
-                    return _buildChatItem(chat);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildChatItem(Chat chat) {
+  PreferredSizeWidget _buildModernAppBar() {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: Colors.white,
+      foregroundColor: Colors.black87,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.chat_bubble_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Messages',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+        ],
+      ),
+      actions: [
+        StreamBuilder<int>(
+          stream: _chatService.getTotalUnreadCountStream(),
+          builder: (context, snapshot) {
+            final unreadCount = snapshot.data ?? 0;
+            if (unreadCount > 0) {
+              return Container(
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red, Colors.red.shade400],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Search conversations...',
+            hintStyle: TextStyle(color: Colors.grey[500]),
+            prefixIcon: Container(
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.search_rounded,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            suffixIcon:
+                _searchQuery.isNotEmpty
+                    ? IconButton(
+                      icon: Icon(Icons.clear_rounded, color: Colors.grey[600]),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                    : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 16,
+            ),
+          ),
+          onChanged: (value) => setState(() => _searchQuery = value),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatsList() {
+    return StreamBuilder<List<Chat>>(
+      stream: _chatService.getUserChatsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingState();
+        }
+
+        if (snapshot.hasError) {
+          return _buildErrorState(snapshot.error.toString());
+        }
+
+        final chats = snapshot.data ?? [];
+        final filteredChats =
+            chats.where((chat) {
+              if (_searchQuery.isEmpty) return true;
+              return chat.otherUserName.toLowerCase().contains(_searchQuery) ||
+                  chat.lastMessage.toLowerCase().contains(_searchQuery);
+            }).toList();
+
+        if (filteredChats.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: filteredChats.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            return _buildModernChatItem(filteredChats[index], index);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModernChatItem(Chat chat, int index) {
     return StreamBuilder<int>(
       stream: _chatService.getUnreadCountStream(chat.id),
       builder: (context, unreadSnapshot) {
         final unreadCount = unreadSnapshot.data ?? 0;
         final hasUnread = unreadCount > 0;
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        return AnimatedContainer(
+          duration: Duration(milliseconds: 300 + (index * 50)),
+          curve: Curves.easeOutBack,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+              border:
+                  hasUnread
+                      ? Border.all(
+                        color: AppColors.primary.withOpacity(0.3),
+                        width: 1,
+                      )
+                      : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _navigateToChat(chat);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildAvatar(chat, hasUnread),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    chat.otherUserName,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight:
+                                          hasUnread
+                                              ? FontWeight.bold
+                                              : FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Text(
+                                  _formatTime(chat.lastMessageTime),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        hasUnread
+                                            ? AppColors.primary
+                                            : Colors.grey[500],
+                                    fontWeight:
+                                        hasUnread
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    chat.lastMessage,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color:
+                                          hasUnread
+                                              ? Colors.black87
+                                              : Colors.grey[600],
+                                      fontWeight:
+                                          hasUnread
+                                              ? FontWeight.w500
+                                              : FontWeight.normal,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (hasUnread) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.primary,
+                                          AppColors.primary.withOpacity(0.8),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      unreadCount > 99
+                                          ? '99+'
+                                          : unreadCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
             ),
-            leading: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Text(
-                    chat.userId == FirebaseAuth.instance.currentUser?.uid
-                        ? chat.agentName.isNotEmpty
-                            ? chat.agentName[0].toUpperCase()
-                            : 'A'
-                        : chat.userName.isNotEmpty
-                        ? chat.userName[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                if (hasUnread)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 20,
-                      ),
-                      child: Text(
-                        unreadCount > 99 ? '99+' : unreadCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        chat.userId == FirebaseAuth.instance.currentUser?.uid
-                            ? chat.agentName
-                            : chat.userName,
-                        style: TextStyle(
-                          fontWeight:
-                              hasUnread ? FontWeight.bold : FontWeight.w500,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    if (chat.lastMessageTime != null)
-                      Text(
-                        _formatTime(chat.lastMessageTime!),
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                          fontWeight:
-                              hasUnread ? FontWeight.w500 : FontWeight.normal,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                // Role badge
-                StreamBuilder<DocumentSnapshot>(
-                  stream:
-                      FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(
-                            chat.userId ==
-                                    FirebaseAuth.instance.currentUser?.uid
-                                ? chat.agentId
-                                : chat.userId,
-                          )
-                          .snapshots(),
-                  builder: (context, roleSnapshot) {
-                    String roleText = 'User';
-                    if (roleSnapshot.hasData && roleSnapshot.data!.exists) {
-                      final userData =
-                          roleSnapshot.data!.data() as Map<String, dynamic>?;
-                      roleText = userData?['role'] ?? 'User';
-                    }
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        roleText,
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  chat.lastMessage ?? 'No messages yet',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: hasUnread ? Colors.black87 : Colors.grey[600],
-                    fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            onTap: () => _openChat(chat),
           ),
         );
       },
     );
   }
 
-  void _openChat(Chat chat) async {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-    // Determine the other participant
-    String otherUserId;
-    String otherUserName;
-    String otherUserRole = 'User';
+  Widget _buildAvatar(Chat chat, bool hasUnread) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors:
+              hasUnread
+                  ? [AppColors.primary, AppColors.primary.withOpacity(0.7)]
+                  : [Colors.grey[300]!, Colors.grey[400]!],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (hasUnread ? AppColors.primary : Colors.grey).withOpacity(
+              0.3,
+            ),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: CircleAvatar(
+        radius: 26,
+        backgroundColor: Colors.transparent,
+        child: Text(
+          chat.otherUserName.isNotEmpty
+              ? chat.otherUserName[0].toUpperCase()
+              : '?',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: hasUnread ? Colors.white : Colors.grey[700],
+          ),
+        ),
+      ),
+    );
+  }
 
-    if (chat.userId == currentUserId) {
-      otherUserId = chat.agentId;
-      otherUserName = chat.agentName;
-      // Get agent role from users collection
-      try {
-        final agentDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(chat.agentId)
-                .get();
-        if (agentDoc.exists) {
-          otherUserRole = agentDoc.data()?['role'] ?? 'Real Estate Agent';
-        }
-      } catch (e) {
-        print('Error getting agent role: $e');
-      }
-    } else {
-      otherUserId = chat.userId;
-      otherUserName = chat.userName;
-      // Get user role from users collection
-      try {
-        final userDoc =
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(chat.userId)
-                .get();
-        if (userDoc.exists) {
-          otherUserRole = userDoc.data()?['role'] ?? 'Customer';
-        }
-      } catch (e) {
-        print('Error getting user role: $e');
-      }
-    }
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Loading conversations...',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Colors.red[400],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Oops! Something went wrong',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Unable to load your conversations',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => setState(() {}),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _searchQuery.isEmpty
+                    ? Icons.chat_bubble_outline_rounded
+                    : Icons.search_off_rounded,
+                size: 64,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'No conversations yet'
+                  : 'No conversations found',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Start a conversation by messaging an agent from a property listing'
+                  : 'Try a different search term',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (_searchQuery.isEmpty) ...[
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.home_rounded),
+                label: const Text('Browse Properties'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToChat(Chat chat) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final otherUserId = chat.participants.firstWhere(
+      (id) => id != currentUserId,
+    );
+    final otherUserName = chat.otherUserName;
+    final otherUserRole = chat.otherUserRole;
 
     Navigator.pushNamed(
       context,
@@ -460,7 +628,7 @@ class _ChatListPageState extends State<ChatListPage> {
         'agentName': otherUserName,
         'role': otherUserRole,
         'userId': currentUserId,
-        'userName': '', // Optionally pass the current user's name if available
+        'userName': '',
       },
     );
   }
@@ -473,9 +641,9 @@ class _ChatListPageState extends State<ChatListPage> {
       if (difference.inDays == 1) {
         return 'Yesterday';
       } else if (difference.inDays < 7) {
-        return '${difference.inDays} days ago';
+        return '${difference.inDays}d ago';
       } else {
-        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+        return DateFormat('MMM d').format(dateTime);
       }
     } else if (difference.inHours > 0) {
       return '${difference.inHours}h ago';

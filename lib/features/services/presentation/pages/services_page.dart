@@ -9,6 +9,8 @@ import '../bloc/service_bloc.dart';
 import '../bloc/service_event.dart';
 import '../bloc/service_state.dart';
 import 'service_provider_detail_page.dart';
+import 'my_bookings_page.dart';
+import '../../data/utils/firebase_seeder.dart';
 
 class ServicesPage extends StatelessWidget {
   const ServicesPage({super.key});
@@ -249,6 +251,75 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Including Real Estate Agents, Contractors, Designers & More',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Debug button for testing real estate agents
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await FirebaseSeeder.seedTestPropertiesWithAgents();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Test properties with realtorId added!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                ),
+                child: const Text('Add Test Properties (Debug)'),
+              ),
+              const SizedBox(height: 16),
+              // My Bookings Button - positioned below title
+              Align(
+                alignment: Alignment.centerLeft,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyBookingsPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.book_online, size: 16),
+                  label: const Text('My Bookings'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    elevation: 2,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -551,16 +622,16 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is FeaturedProvidersLoaded) {
                   if (state.providers.isEmpty) {
-                    return _buildEmptyState('No featured providers found');
-                  }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  return _buildEmptyState('No featured providers found');
+                }
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: state.providers.length,
-                    itemBuilder: (context, index) {
+                  itemBuilder: (context, index) {
                       return _buildProviderCard(state.providers[index]);
-                    },
-                  );
+                  },
+                );
                 } else if (state is ServiceError) {
                   return Center(child: Text('Error: ${state.message}'));
                 }
@@ -616,13 +687,13 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is TopRatedProvidersLoaded) {
                   if (state.providers.isEmpty) {
-                    return _buildEmptyState('No top rated providers found');
-                  }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  return _buildEmptyState('No top rated providers found');
+                }
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: state.providers.length,
-                    itemBuilder: (context, index) {
+                  itemBuilder: (context, index) {
                       return _buildProviderCard(state.providers[index]);
                     },
                   );
@@ -639,22 +710,22 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
   }
 
   Widget _buildProviderCard(ServiceProvider provider) {
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: GestureDetector(
-        onTap: () {
+      return Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: GestureDetector(
+          onTap: () {
           // Convert ServiceProvider entity to ServiceProviderModel for the detail page
           final providerModel = ServiceProviderModel(
             id: provider.id,
@@ -685,165 +756,165 @@ class _ServicesPageContentState extends State<_ServicesPageContent> {
             lastActive: provider.lastActive,
           );
 
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
                   (context) =>
                       ServiceProviderDetailPage(provider: providerModel),
-            ),
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Image and Status
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                  child: Container(
-                    height: 120,
-                    width: double.infinity,
-                    color: Colors.grey[200],
-                    child:
-                        provider.profileImage.isNotEmpty
-                            ? Image.network(
-                              provider.profileImage,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildDefaultAvatar(provider.name);
-                              },
-                            )
-                            : _buildDefaultAvatar(provider.name),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Row(
-                    children: [
-                      if (provider.isVerified)
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.verified,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      if (provider.isVerified) const SizedBox(width: 4),
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: provider.isOnline ? Colors.green : Colors.grey,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            // Provider Info
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Profile Image and Status
+              Stack(
                 children: [
-                  Text(
-                    provider.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    provider.primaryService,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+                    child: Container(
+                      height: 120,
+                      width: double.infinity,
+                      color: Colors.grey[200],
+                      child:
+                          provider.profileImage.isNotEmpty
+                              ? Image.network(
+                                provider.profileImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildDefaultAvatar(provider.name);
+                                },
+                              )
+                              : _buildDefaultAvatar(provider.name),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${provider.rating.toStringAsFixed(1)} (${provider.reviewsCount})',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.grey[500],
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          provider.city,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Row(
+                      children: [
+                        if (provider.isVerified)
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.verified,
+                              color: Colors.white,
+                              size: 12,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        if (provider.isVerified) const SizedBox(width: 4),
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                          color: provider.isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      provider.isOnline ? 'Available Now' : 'Offline',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color:
-                            provider.isOnline
-                                ? AppColors.primary
-                                : Colors.grey[600],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              // Provider Info
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      provider.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      provider.primaryService,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${provider.rating.toStringAsFixed(1)} (${provider.reviewsCount})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          color: Colors.grey[500],
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            provider.city,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        provider.isOnline ? 'Available Now' : 'Offline',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color:
+                              provider.isOnline
+                                  ? AppColors.primary
+                                  : Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDefaultAvatar(String name) {

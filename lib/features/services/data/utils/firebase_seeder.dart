@@ -494,4 +494,102 @@ class FirebaseSeeder {
       rethrow;
     }
   }
+
+  static Future<void> seedTestPropertiesWithAgents() async {
+    final firestore = FirebaseFirestore.instance;
+
+    // Create test properties with realtorId
+    final testProperties = [
+      {
+        'title': 'Modern Downtown Apartment',
+        'description': 'Beautiful 2-bedroom apartment in the heart of downtown',
+        'price': 350000,
+        'realtorId':
+            'agent1', // This should match a user ID in your users collection
+        'type': 'Apartment',
+        'status': 'For Sale',
+        'bedrooms': 2,
+        'bathrooms': 2,
+        'area': 1200,
+        'city': 'San Francisco',
+        'state': 'CA',
+        'country': 'USA',
+        'address': '123 Main St, San Francisco, CA',
+        'latitude': 37.7749,
+        'longitude': -122.4194,
+        'images': [
+          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
+          'https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=800',
+        ],
+        'amenities': ['Parking', 'Gym', 'Pool'],
+        'ownerId': 'agent1',
+        'isFeatured': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'title': 'Luxury Villa with Ocean View',
+        'description': 'Stunning 4-bedroom villa with panoramic ocean views',
+        'price': 1200000,
+        'realtorId':
+            'agent2', // This should match a user ID in your users collection
+        'type': 'Villa',
+        'status': 'For Sale',
+        'bedrooms': 4,
+        'bathrooms': 3,
+        'area': 2800,
+        'city': 'Los Angeles',
+        'state': 'CA',
+        'country': 'USA',
+        'address': '456 Ocean Blvd, Los Angeles, CA',
+        'latitude': 34.0522,
+        'longitude': -118.2437,
+        'images': [
+          'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+          'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800',
+        ],
+        'amenities': ['Ocean View', 'Private Pool', 'Garden'],
+        'ownerId': 'agent2',
+        'isFeatured': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      {
+        'title': 'Cozy Family Home',
+        'description': 'Perfect family home in a quiet neighborhood',
+        'price': 450000,
+        'realtorId':
+            'agent3', // This should match a user ID in your users collection
+        'type': 'House',
+        'status': 'For Sale',
+        'bedrooms': 3,
+        'bathrooms': 2,
+        'area': 1800,
+        'city': 'San Diego',
+        'state': 'CA',
+        'country': 'USA',
+        'address': '789 Family St, San Diego, CA',
+        'latitude': 32.7157,
+        'longitude': -117.1611,
+        'images': [
+          'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+          'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
+        ],
+        'amenities': ['Backyard', 'Garage', 'Fireplace'],
+        'ownerId': 'agent3',
+        'isFeatured': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+    ];
+
+    try {
+      for (final property in testProperties) {
+        await firestore.collection('properties').add(property);
+      }
+      print('✅ Test properties with realtorId seeded successfully!');
+    } catch (e) {
+      print('❌ Error seeding test properties: $e');
+    }
+  }
 }

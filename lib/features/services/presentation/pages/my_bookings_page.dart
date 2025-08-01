@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/service_booking.dart';
-import '../../data/modice_booking_model.dart';
+import '../../data/models/service_booking_model.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -31,7 +31,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    
+
     if (user == null) {
       return Scaffold(
         appBar: AppBar(
@@ -39,9 +39,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
-          child: Text('Please log in to view your bookings'),
-        ),
+        body: const Center(child: Text('Please log in to view your bookings')),
       );
     }
 
@@ -75,7 +73,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   Widget _buildBookingsList(List<String> statusFilter) {
     final user = FirebaseAuth.instance.currentUser!;
-    
+
     return StreamBuilder<QuerySnapshot>(
       stream: _buildBookingsQuery(user.uid, statusFilter),
       builder: (context, snapshot) {
@@ -90,7 +88,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         }
 
         final docs = snapshot.data?.docs ?? [];
-        
+
         if (docs.isEmpty) {
           return _buildEmptyState(statusFilter);
         }
@@ -110,7 +108,10 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     );
   }
 
-  Stream<QuerySnapshot> _buildBookingsQuery(String userId, List<String> statusFilter) {
+  Stream<QuerySnapshot> _buildBookingsQuery(
+    String userId,
+    List<String> statusFilter,
+  ) {
     Query query = FirebaseFirestore.instance
         .collection('service_bookings')
         .where('customer_id', isEqualTo: userId);
@@ -294,7 +295,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   Widget _buildEmptyState(List<String> statusFilter) {
     String message;
-    if (statusFilter.contains('pending') || statusFilter.contains('confirmed')) {
+    if (statusFilter.contains('pending') ||
+        statusFilter.contains('confirmed')) {
       message = 'No active bookings';
     } else if (statusFilter.contains('completed')) {
       message = 'No completed bookings';
@@ -306,25 +308,16 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.book_online,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.book_online, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             message,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
             'Book a service to get started',
-            style: TextStyle(
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(color: Colors.grey[500]),
           ),
         ],
       ),
@@ -355,24 +348,30 @@ class _MyBookingsPageState extends State<MyBookingsPage>
   void _cancelBooking(ServiceBookingModel booking) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel Booking'),
-        content: const Text('Are you sure you want to cancel this booking?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Cancel Booking'),
+            content: const Text(
+              'Are you sure you want to cancel this booking?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('No'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _updateBookingStatus(
+                    booking.id,
+                    BookingStatus.cancelled,
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Yes, Cancel'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _updateBookingStatus(booking.id, BookingStatus.cancelled);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yes, Cancel'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -390,15 +389,18 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     );
   }
 
-  Future<void> _updateBookingStatus(String bookingId, BookingStatus status) async {
+  Future<void> _updateBookingStatus(
+    String bookingId,
+    BookingStatus status,
+  ) async {
     try {
       await FirebaseFirestore.instance
           .collection('service_bookings')
           .doc(bookingId)
           .update({
-        'status': _statusToString(status),
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+            'status': _statusToString(status),
+            'updated_at': FieldValue.serverTimestamp(),
+          });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -407,9 +409,9 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update booking: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update booking: $e')));
     }
   }
 

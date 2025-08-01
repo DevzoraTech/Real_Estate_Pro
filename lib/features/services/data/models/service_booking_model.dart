@@ -253,4 +253,13 @@ class ServiceBookingModel extends ServiceBooking {
       providerNotes: booking.providerNotes,
     );
   }
+
+  // Business logic getters
+  bool get canBeCancelled {
+    return status == BookingStatus.pending || status == BookingStatus.confirmed;
+  }
+
+  bool get canBeRated {
+    return status == BookingStatus.completed && customerReview == null;
+  }
 }

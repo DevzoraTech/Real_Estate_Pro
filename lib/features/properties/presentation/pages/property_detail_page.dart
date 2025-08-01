@@ -2443,26 +2443,42 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
 
           // Compact agent card
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.grey[50],
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey[200]!),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Compact avatar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child:
-                      agent?.avatar != null && agent!.avatar!.isNotEmpty
-                          ? Image.network(
-                            agent.avatar!,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
+                // Agent header with avatar and basic info
+                Row(
+                  children: [
+                    // Avatar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child:
+                          agent?.avatar != null && agent!.avatar!.isNotEmpty
+                              ? Image.network(
+                                agent.avatar!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 40,
+                                    height: 40,
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.person_rounded,
+                                      color: AppColors.secondary,
+                                      size: 20,
+                                    ),
+                                  );
+                                },
+                              )
+                              : Container(
                                 width: 40,
                                 height: 40,
                                 color: Colors.grey[300],
@@ -2471,160 +2487,139 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                                   color: AppColors.secondary,
                                   size: 20,
                                 ),
-                              );
-                            },
-                          )
-                          : Container(
-                            width: 40,
-                            height: 40,
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.person_rounded,
-                              color: AppColors.secondary,
-                              size: 20,
-                            ),
-                          ),
-                ),
-                const SizedBox(width: 12),
-
-                // Compact agent info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        agent != null ? agent.fullName : 'Agent Name',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
+                              ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Agent name and role
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                          Text(
+                            agent != null ? agent.fullName : 'Agent Name',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
                             ),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              agent?.role ?? 'Agent',
-                              style: const TextStyle(
-                                color: AppColors.secondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 8),
-                          // Compact rating
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.star_rounded,
-                                  color: Colors.amber,
-                                  size: 12,
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
                                 ),
-                                const SizedBox(width: 2),
-                                _agentRatingLoading
-                                    ? const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 1,
-                                      ),
-                                    )
-                                    : Text(
-                                      _agentRating != null
-                                          ? _agentRating!.toStringAsFixed(1)
-                                          : '0.0',
-                                      style: const TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  agent?.role ?? 'Agent',
+                                  style: const TextStyle(
+                                    color: AppColors.secondary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Rating
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: Colors.amber,
+                                      size: 12,
                                     ),
-                              ],
-                            ),
+                                    const SizedBox(width: 2),
+                                    _agentRatingLoading
+                                        ? const SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1,
+                                          ),
+                                        )
+                                        : Text(
+                                          _agentRating != null
+                                              ? _agentRating!.toStringAsFixed(1)
+                                              : '0.0',
+                                          style: const TextStyle(
+                                            color: AppColors.textPrimary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          if (agent != null &&
-                              agent.phone != null &&
-                              agent.phone!.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4.0),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.phone,
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    agent.phone!,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (agent != null && agent.email.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2.0),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.email,
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    agent.email,
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (agentId != null && agentId.isNotEmpty && !isSelf)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: OutlinedButton.icon(
-                                onPressed:
-                                    () => _showSubmitReviewSheet(agentId),
-                                icon: const Icon(Icons.rate_review, size: 18),
-                                label: const Text('Write a Review'),
-                              ),
-                            ),
-                          if (isSelf)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: OutlinedButton.icon(
-                                onPressed: null,
-                                icon: const Icon(Icons.rate_review, size: 18),
-                                label: const Text('You cannot review yourself'),
-                              ),
-                            ),
                         ],
                       ),
-                      // Contact buttons
-                      Row(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Contact info
+                if (agent != null &&
+                    agent.phone != null &&
+                    agent.phone!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.phone, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            agent.phone!,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (agent != null && agent.email.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.email, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            agent.email,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Action buttons
+                Row(
+                  children: [
+                    // Contact buttons
+                    Expanded(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildAgentContactButton(Icons.phone, Colors.green),
@@ -2635,8 +2630,39 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    // Review button
+                    if (agentId != null && agentId.isNotEmpty && !isSelf)
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showSubmitReviewSheet(agentId),
+                          icon: const Icon(Icons.rate_review, size: 16),
+                          label: const Text('Review'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                          ),
+                        ),
+                      ),
+                    if (isSelf)
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.rate_review, size: 16),
+                          label: const Text('Self'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
